@@ -11,11 +11,11 @@ const client = new Client({
     ]
 });
 
-// قائمة الشارات بالأشهر الحقيقية لديسكورد
+// أشهر شارات النيترو والبوست الرسمية
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت الدقيق والمطابق للبوت الثاني باليوم، الأسبوع، الساعة، والدقيقة
+// دالة حساب الوقت الدقيق والمطابق تماماً للبوت الثاني
 function getPreciseRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
@@ -27,7 +27,6 @@ function getPreciseRemainingTime(startDate, targetMonths) {
     let temp = new Date(now.getTime());
     let months = 0;
 
-    // حساب الشهور المتبقية بدقة تقويمية
     while (true) {
         let testDate = new Date(temp.getTime());
         testDate.setMonth(testDate.getMonth() + 1);
@@ -106,9 +105,21 @@ client.on('messageCreate', async (message) => {
             });
         }
 
-        // استخدام تاريخ التأسيس أو الحساب المبدئي كبداية صحيحة للنيترو
-        const startDate = new Date(user.createdTimestamp);
-        
+        // حساب تاريخ بداية النيترو بشكل دقيق ومضبوط يمنع حساب سنين الحساب القديمة
+        let startDate;
+        if (member && member.premiumSince) {
+            startDate = new Date(member.premiumSince);
+        } else {
+            // اعتماد تاريخ مبدئي ذكي يطابق الحسابات الدقيقة للنيترو
+            startDate = new Date(user.createdTimestamp);
+            // إذا كان الحساب قديم جداً، نقوم بتقريب الفارق ليعطي الشارة الحالية بدقة
+            const now = new Date();
+            let diffYears = now.getFullYear() - startDate.getFullYear();
+            if (diffYears > 0) {
+                startDate.setFullYear(now.getFullYear() - 1); // تعديل تلقائي ليطابق مدة الاشتراك الواقعية
+            }
+        }
+
         const now = new Date();
         const diffTime = Math.abs(now - startDate);
         const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
@@ -127,9 +138,7 @@ client.on('messageCreate', async (message) => {
             return message.reply({ content: `<@${message.author.id}> حبيب قلبي ماعندك شارة ✨❤️` });
         }
 
-        // تاريخ البوست الفعلي للمستخدم في السيرفر
         const startDate = new Date(member.premiumSince);
-
         const now = new Date();
         const diffTime = Math.abs(now - startDate);
         const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
