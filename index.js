@@ -32,16 +32,14 @@ const BOOST_MILESTONES = [
     { label: "15M", months: 15 }, { label: "18M", months: 18 }, { label: "24M", months: 24 }
 ];
 
-function drawCreativeWatermarks(ctx, width, height) {
+// دالة الحقوق المحدثة (لون DEV: FOX أخضر وبدون تكرار لـ REBA SERVER لتجنب التشابك)
+function drawGreenWatermark(ctx, width, height) {
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('REBA SERVER', width - 25, height - 20);
-
-    ctx.fillStyle = '#ff73fa';
+    ctx.fillStyle = '#2ecc71'; // لون أخضر فخم لـ DEV: FOX
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'left';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 6;
     ctx.fillText('DEV: FOX', 25, height - 20);
     ctx.restore();
 }
@@ -68,11 +66,11 @@ async function generateNoBadgeCard() {
         }
     }
 
-    drawCreativeWatermarks(ctx, width, height);
+    drawGreenWatermark(ctx, width, height);
     return canvas.toBuffer('image/png');
 }
 
-// دالة عرض بطاقة المشترك بالنيترو (تعرض صورتك الجاهزة nitro_bg.png بدون أي تكرار للنصوص)
+// دالة عرض بطاقة المشترك بالنيترو (صورة nitro_bg.png بدون تكرار وبدون تشابك)
 async function generateNitroBadgeCard() {
     const width = 800;
     const height = 420;
@@ -80,7 +78,6 @@ async function generateNitroBadgeCard() {
     const ctx = canvas.getContext('2d');
 
     try {
-        // قراءة صورتك الجاهزة للنيترو nitro_bg.png كما هي تماماً بدون كتابة نصوص فوقها لتلافي التكرار
         const nitroBg = await loadImage(path.join(__dirname, 'nitro_bg.png'));
         ctx.drawImage(nitroBg, 0, 0, width, height);
     } catch (e) {
@@ -95,7 +92,7 @@ async function generateNitroBadgeCard() {
         }
     }
 
-    drawCreativeWatermarks(ctx, width, height);
+    drawGreenWatermark(ctx, width, height);
     return canvas.toBuffer('image/png');
 }
 
@@ -142,7 +139,6 @@ client.on('messageCreate', async (message) => {
             });
         }
 
-        // إرسال صورتك الجاهزة للنيترو بدون أي تكرار
         const imageBuffer = await generateNitroBadgeCard();
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-nitro.png' });
 
