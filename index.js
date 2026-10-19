@@ -11,8 +11,7 @@ const client = new Client({
     ]
 });
 
-const PREFIX = ""; // بدون بادئة، الاستدعاء بالحرف مباشرة (n, b, t)
-
+// دالة حساب الوقت الدقيق بالشهور والأيام والساعات والدقائق
 function calculateExactRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
@@ -50,7 +49,7 @@ function calculateExactRemainingTime(startDate, targetMonths) {
 
     if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
 
-    return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
+    return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
 client.on('ready', () => {
@@ -62,7 +61,6 @@ client.on('messageCreate', async (message) => {
 
     const content = message.content.trim().toLowerCase();
     
-    // تحديد الأوامر المباشرة (n, b, t)
     let command = "";
     if (content === 'n' || content === 'nitro') command = 'n';
     else if (content === 'b' || content === 'boost') command = 'b';
@@ -79,7 +77,7 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // أمر النيترو النصي (n)
+    // أمر النيترو (n)
     if (command === 'n') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
@@ -95,7 +93,7 @@ client.on('messageCreate', async (message) => {
 
         if (!hasNitro) {
             return message.reply({
-                content: `<@${message.author.id}> اكو غلط !! هسة عرفت انت ماعندك هاي شارة يمعود`
+                content: `<@${message.author.id}> حبيب قلبي ماعندك شارة ✨❤️`
             });
         }
 
@@ -114,10 +112,10 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // أمر البوست النصي (b)
+    // أمر البوست (b) - مع التحقق والعبارة المطلوبة بدقة
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            return message.reply({ content: `<@${message.author.id}> أنت لست مساهماً ببوست في هذا السيرفر حالياً` });
+            return message.reply({ content: `<@${message.author.id}> حبيب قلبي ماعندك شارة ✨❤️` });
         }
 
         const startDate = new Date(member.premiumSince);
@@ -131,11 +129,11 @@ client.on('messageCreate', async (message) => {
         let timeRemaining = calculateExactRemainingTime(startDate, targetMonth);
 
         return message.reply({
-            content: `<@${message.author.id}> 💎 **معلومات البوست:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
+            content: `<@${message.author.id}> 💎 **معلومات شارة البوست:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
         });
     }
 
-    // أمر معلومات النوع (t)
+    // أمر المعلومات (t)
     if (command === 't') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isBoosting = member && member.premiumSince !== null;
@@ -149,7 +147,7 @@ client.on('messageCreate', async (message) => {
         } else if (isBoosting) {
             nitroType = "Server Booster فقط 💎";
         } else {
-            return message.reply({ content: `<@${message.author.id}> ما عندك أي اشتراك نيترو حالياً` });
+            return message.reply({ content: `<@${message.author.id}> حبيب قلبي ماعندك شارة ✨❤️` });
         }
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
@@ -158,7 +156,7 @@ client.on('messageCreate', async (message) => {
         const currentMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375));
 
         return message.reply({
-            content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة التقريبية:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
+            content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة المضيئة:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
         });
     }
 });
