@@ -15,32 +15,44 @@ const client = new Client({
 
 const PREFIX = "-";
 
-// مستويات النيترو بالشهور وألوانها الرسمية
+// روابط شارات النيترو الملونة الرسمية الحقيقية (مطابقة للصورة تماماً)
+const NITRO_BADGE_URLS = [
+    "https://cdn.discordapp.com/badge-icons/2ba85e802c7f0d03b30200877990d0b0.png", // 1m (برتقالي)
+    "https://cdn.discordapp.com/badge-icons/e9b1114b726c04f5e3e29f59f6356e84.png", // 3m (فضي)
+    "https://cdn.discordapp.com/badge-icons/011928099e4f20f019f6229c92e42817.png", // 6m (ذهبي)
+    "https://cdn.discordapp.com/badge-icons/3aed58a2d1d03339167389ed301b4478.png", // 1y (أزرق)
+    "https://cdn.discordapp.com/badge-icons/862ae21808b8b09d29e3a65c92f15e71.png", // 2y (بنفسجي)
+    "https://cdn.discordapp.com/badge-icons/24a8e63a13a2908f0376c3ef6f4b66b3.png", // 3y (أخضر)
+    "https://cdn.discordapp.com/badge-icons/0a020be0ba80874017f8a37943f29051.png", // 5y (وردي)
+    "https://cdn.discordapp.com/badge-icons/3c0a5d2b7754f9d6b9a8cf4f36a87c12.png"  // 6y (قوس قزح)
+];
+
+// مستويات النيترو بالشهور
 const NITRO_MILESTONES = [
-    { label: "1m", months: 1, color: "#e67e22" },
-    { label: "3m", months: 3, color: "#bdc3c7" },
-    { label: "6m", months: 6, color: "#f1c40f" },
-    { label: "1y", months: 12, color: "#3498db" },
-    { label: "2y", months: 24, color: "#9b59b6" },
-    { label: "3y", months: 36, color: "#2ecc71" },
-    { label: "5y", months: 60, color: "#e74c3c" },
-    { label: "6y", months: 72, color: "#1abc9c" }
+    { label: "1m", months: 1 },
+    { label: "3m", months: 3 },
+    { label: "6m", months: 6 },
+    { label: "1y", months: 12 },
+    { label: "2y", months: 24 },
+    { label: "3y", months: 36 },
+    { label: "5y", months: 60 },
+    { label: "6y", months: 72 }
 ];
 
-// مستويات البوست بالشهور وألوانها الرسمية
+// مستويات البوست بالشهور
 const BOOST_MILESTONES = [
-    { label: "1M", months: 1, color: "#f47fff" },
-    { label: "2M", months: 2, color: "#f47fff" },
-    { label: "3M", months: 3, color: "#ff73fa" },
-    { label: "6M", months: 6, color: "#ff73fa" },
-    { label: "9M", months: 9, color: "#e056fd" },
-    { label: "12M", months: 12, color: "#e056fd" },
-    { label: "15M", months: 15, color: "#be2edd" },
-    { label: "18M", months: 18, color: "#be2edd" },
-    { label: "24M", months: 24, color: "#d63031" }
+    { label: "1M", months: 1 },
+    { label: "2M", months: 2 },
+    { label: "3M", months: 3 },
+    { label: "6M", months: 6 },
+    { label: "9M", months: 9 },
+    { label: "12M", months: 12 },
+    { label: "15M", months: 15 },
+    { label: "18M", months: 18 },
+    { label: "24M", months: 24 }
 ];
 
-// دالة رسم الحقوق
+// رسم الحقوق
 function drawCreativeWatermarks(ctx, width, height) {
     ctx.save();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
@@ -55,8 +67,8 @@ function drawCreativeWatermarks(ctx, width, height) {
     ctx.restore();
 }
 
-// دالة حساب الوقت المتبقي الدقيق
-function calculateExactRemainingTime(startDate, targetMonths) {
+// حساب الوقت الدقيق للنيترو
+function calculateNitroRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
@@ -96,92 +108,6 @@ function calculateExactRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
 }
 
-// دالة رسم شارات البوست (الجواهر الملونة الفخمة)
-function drawBoostBadgeIcon(ctx, x, y, size, color, isActive) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    if (isActive) {
-        // رسم الألماسة النيون الملونة والمضيئة
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-
-        ctx.beginPath();
-        ctx.moveTo(0, -size);
-        ctx.lineTo(size * 0.85, -size * 0.35);
-        ctx.lineTo(size * 0.85, size * 0.35);
-        ctx.lineTo(0, size);
-        ctx.lineTo(-size * 0.85, size * 0.35);
-        ctx.lineTo(-size * 0.85, -size * 0.35);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // بريق داخلي
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
-        ctx.beginPath();
-        ctx.moveTo(0, -size * 0.65);
-        ctx.lineTo(size * 0.35, 0);
-        ctx.lineTo(0, size * 0.65);
-        ctx.lineTo(-size * 0.35, 0);
-        ctx.closePath();
-        ctx.fill();
-    } else {
-        // ألماسة معتمة غير مفعلة
-        ctx.fillStyle = '#221833';
-        ctx.strokeStyle = '#3d2e54';
-        ctx.lineWidth = 1.5;
-
-        ctx.beginPath();
-        ctx.moveTo(0, -size * 0.8);
-        ctx.lineTo(size * 0.65, -size * 0.25);
-        ctx.lineTo(size * 0.65, size * 0.25);
-        ctx.lineTo(0, size * 0.8);
-        ctx.lineTo(-size * 0.65, size * 0.25);
-        ctx.lineTo(-size * 0.65, -size * 0.25);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-    }
-
-    ctx.restore();
-}
-
-// دالة رسم شارات النيترو الملونة الرسمية
-function drawNitroBadgeIcon(ctx, x, y, size, color, isActive) {
-    ctx.save();
-    ctx.translate(x, y);
-
-    if (isActive) {
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-
-        ctx.beginPath();
-        ctx.arc(0, 0, size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // دائرة نيون داخلية
-        ctx.beginPath();
-        ctx.arc(0, 0, size * 0.45, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-    } else {
-        ctx.fillStyle = '#221833';
-        ctx.strokeStyle = '#3d2e54';
-        ctx.lineWidth = 1.5;
-
-        ctx.beginPath();
-        ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-    }
-
-    ctx.restore();
-}
-
 // بطاقة عدم وجود الشارة
 async function generateNoBadgeCard(titleText, iraqiMessage) {
     const width = 800;
@@ -217,14 +143,13 @@ async function generateNoBadgeCard(titleText, iraqiMessage) {
     return canvas.toBuffer('image/png');
 }
 
-// رسم بطاقة الكانفاس الملونة والمضمونة 100% فوق خلفية reba_bg
-async function generateBadgeCard(titleText, startDate, milestones, isNitro = false) {
+// رسم بطاقة النيترو المطابقة للصورة تماماً
+async function generateNitroBadgeCard(titleText, startDate, milestones) {
     const width = 800;
     const height = 420;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // خلفية سيرفر ريبين
     try {
         const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
         ctx.drawImage(bg, 0, 0, width, height);
@@ -235,8 +160,7 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
         ctx.fillRect(0, 0, width, height);
     }
 
-    // إطار مضيء
-    ctx.strokeStyle = isNitro ? 'rgba(244, 127, 255, 0.25)' : 'rgba(255, 115, 250, 0.25)';
+    ctx.strokeStyle = 'rgba(244, 127, 255, 0.25)';
     ctx.lineWidth = 3;
     ctx.strokeRect(12, 12, width - 24, height - 24);
 
@@ -247,11 +171,11 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     ctx.fillText(titleText, width / 2, 65);
 
     const now = new Date();
-    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-    if (now.getDate() < startDate.getDate()) {
-        currentMonths--;
-    }
-    currentMonths = Math.max(0, currentMonths);
+    
+    // حساب الأيام بدقة للنيترو
+    const diffTime = Math.abs(now - startDate);
+    const totalDaysElapsed = diffTime / (1000 * 60 * 60 * 24);
+    const currentMonths = totalDaysElapsed / 30.4375;
 
     let nextMilestone = milestones.find(m => m.months > currentMonths);
     if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
@@ -261,28 +185,38 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     const step = (endX - startX) / (milestones.length - 1);
     const iconsY = 135;
 
-    // رسم الشارات الملونة لكل مستوى
-    milestones.forEach((m, i) => {
+    // رسم الأيقونات الملونة للنيترو فوق الشارة
+    for (let i = 0; i < milestones.length; i++) {
         const x = startX + (i * step);
+        const m = milestones[i];
         const isActive = currentMonths >= m.months;
 
-        if (isNitro) {
-            drawNitroBadgeIcon(ctx, x, iconsY, 16, m.color || '#f47fff', isActive);
-        } else {
-            drawBoostBadgeIcon(ctx, x, iconsY, 16, m.color || '#ff73fa', isActive);
+        try {
+            const badgeImg = await loadImage(NITRO_BADGE_URLS[i]);
+            ctx.save();
+            if (!isActive) {
+                ctx.globalAlpha = 0.25; // تظليل الشارات المستقبلية غير المفتوحة
+            }
+            ctx.drawImage(badgeImg, x - 20, iconsY - 20, 40, 40);
+            ctx.restore();
+        } catch (e) {
+            ctx.beginPath();
+            ctx.arc(x, iconsY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? '#f47fff' : '#2c2538';
+            ctx.fill();
         }
 
         ctx.fillStyle = isActive ? '#ffffff' : '#777088';
         ctx.font = 'italic bold 18px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(m.label, x, iconsY + 45);
-    });
+    }
 
-    // شريط التقدم المضيء
+    // شريط التقدم الذي ينملي مع زيادة الوقت
     const progressBarY = iconsY + 65;
     const barWidth = endX - startX;
     
-    ctx.fillStyle = '#231836';
+    ctx.fillStyle = '#3a3148';
     ctx.beginPath();
     ctx.roundRect(startX, progressBarY, barWidth, 14, 7);
     ctx.fill();
@@ -291,30 +225,34 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     const progressRatio = Math.min(1, currentMonths / maxMonths);
     
     if (progressRatio > 0) {
-        ctx.fillStyle = isNitro ? '#f47fff' : '#ff73fa';
+        ctx.fillStyle = '#c252ff';
         ctx.beginPath();
         ctx.roundRect(startX, progressBarY, Math.max(14, barWidth * progressRatio), 14, 7);
         ctx.fill();
     }
 
-    // حساب النص المتبقي المباشر والدقيق
-    const remainingText = calculateExactRemainingTime(startDate, nextMilestone.months);
+    // نص الوقت المتبقي
+    const remainingText = calculateNitroRemainingTime(startDate, nextMilestone.months);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'italic bold 22px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(remainingText, width / 2, progressBarY + 60);
 
-    // أيقونة الشارة الحالية النشطة بالأسفل
+    // أيقونة الشارة الحالية في أسفل البطاقة
     const currentBadgeY = progressBarY + 110;
-    let activeMilestone = milestones.slice().reverse().find(m => currentMonths >= m.months) || milestones[0];
+    let activeIndex = milestones.filter(m => currentMonths >= m.months).length - 1;
+    if (activeIndex < 0) activeIndex = 0;
 
-    if (isNitro) {
-        drawNitroBadgeIcon(ctx, width / 2, currentBadgeY, 22, activeMilestone.color || '#f47fff', true);
-    } else {
-        drawBoostBadgeIcon(ctx, width / 2, currentBadgeY, 22, activeMilestone.color || '#ff73fa', true);
+    try {
+        const activeBadgeImg = await loadImage(NITRO_BADGE_URLS[activeIndex]);
+        ctx.drawImage(activeBadgeImg, (width / 2) - 24, currentBadgeY - 24, 48, 48);
+    } catch (e) {
+        ctx.beginPath();
+        ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#f47fff';
+        ctx.fill();
     }
 
-    // الحقوق
     drawCreativeWatermarks(ctx, width, height);
 
     return canvas.toBuffer('image/png');
@@ -339,28 +277,6 @@ client.on('messageCreate', async (message) => {
             member = await message.guild.members.fetch({ user: message.author.id, force: true });
         }
     } catch (e) {}
-
-    // أمر البوست (-b / -boost)
-    if (command === 'b' || command === 'boost') {
-        const premiumSince = member ? member.premiumSince : null;
-
-        if (!premiumSince) {
-            const imageBuffer = await generateNoBadgeCard('اشارة البوست', 'وين رايح يمعود لا بوست ولا هم يحزنون');
-            const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-boost.png' });
-            return message.reply({
-                content: `<@${message.author.id}>`,
-                files: [attachment]
-            });
-        }
-
-        const imageBuffer = await generateBadgeCard('اشارة البوست', new Date(premiumSince), BOOST_MILESTONES, false);
-        const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-boost.png' });
-
-        return message.reply({
-            content: `<@${message.author.id}>`,
-            files: [attachment]
-        });
-    }
 
     // أمر النيترو (-n / -nitro)
     if (command === 'n' || command === 'nitro') {
@@ -387,7 +303,7 @@ client.on('messageCreate', async (message) => {
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
 
-        const imageBuffer = await generateBadgeCard('اشارة النيترو', startDate, NITRO_MILESTONES, true);
+        const imageBuffer = await generateNitroBadgeCard('اشارة النيترو', startDate, NITRO_MILESTONES);
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-nitro.png' });
 
         return message.reply({
@@ -396,7 +312,7 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // أمر معلومات النيترو (-t / -type) - نصي بسيط
+    // أمر معلومات النيترو (-t / -type)
     if (command === 't' || command === 'type') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isBoosting = member && member.premiumSince !== null;
@@ -415,12 +331,8 @@ client.on('messageCreate', async (message) => {
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         const now = new Date();
-        
-        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-        if (now.getDate() < startDate.getDate()) {
-            currentMonths--;
-        }
-        currentMonths = Math.max(0, currentMonths);
+        const diffTime = Math.abs(now - startDate);
+        const currentMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375));
 
         return message.reply({
             content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة التقريبية المضيئة:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
