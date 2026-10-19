@@ -11,8 +11,8 @@ const client = new Client({
     ]
 });
 
-// دالة حساب الوقت الدقيق بالشهور والأيام والساعات والدقائق
-function calculateExactRemainingTime(startDate, targetMonths) {
+// دالة حساب الوقت الدقيق والمطابق للـ Bot الثاني (شهور، أسابيع، أيام، ساعات، دقائق)
+function calculatePerfectRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
@@ -34,16 +34,20 @@ function calculateExactRemainingTime(startDate, targetMonths) {
         }
     }
 
-    let remainingSeconds = Math.floor((targetDate.getTime() - temp.getTime()) / 1000);
-    let days = Math.floor(remainingSeconds / (3600 * 24));
-    remainingSeconds %= (3600 * 24);
-    let hours = Math.floor(remainingSeconds / 3600);
-    remainingSeconds %= 3600;
-    let minutes = Math.floor(remainingSeconds / 60);
+    let remainingMs = targetDate.getTime() - temp.getTime();
+    let totalDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+    let weeks = Math.floor(totalDays / 7);
+    let days = totalDays % 7;
+    
+    remainingMs %= (1000 * 60 * 60 * 24);
+    let hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    remainingMs %= (1000 * 60 * 60);
+    let minutes = Math.floor(remainingMs / (1000 * 60));
 
     let parts = [];
-    if (months > 0) parts.push(`${months} أشهر`);
-    if (days > 0) parts.push(`${days} يوم`);
+    if (months > 0) parts.push(`${months} شهر`);
+    if (weeks > 0) parts.push(`${weeks} أسابيع`);
+    if (days > 0) parts.push(`${days} أيام`);
     if (hours > 0) parts.push(`${hours} ساعة`);
     if (minutes > 0) parts.push(`${minutes} دقيقة`);
 
@@ -105,14 +109,14 @@ client.on('messageCreate', async (message) => {
         const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
 
         let targetMonth = NITRO_MILESTONES.find(m => m > currentMonths) || NITRO_MILESTONES[NITRO_MILESTONES.length - 1];
-        let timeRemaining = calculateExactRemainingTime(startDate, targetMonth);
+        let timeRemaining = calculatePerfectRemainingTime(startDate, targetMonth);
 
         return message.reply({
             content: `<@${message.author.id}> 🌟 **معلومات اشارة النيترو:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
         });
     }
 
-    // أمر البوست (b) - مع التحقق والعبارة المطلوبة بدقة
+    // أمر البوست (b)
     if (command === 'b') {
         if (!member || !member.premiumSince) {
             return message.reply({ content: `<@${message.author.id}> حبيب قلبي ماعندك شارة ✨❤️` });
@@ -126,7 +130,7 @@ client.on('messageCreate', async (message) => {
         const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
 
         let targetMonth = BOOST_MILESTONES.find(m => m > currentMonths) || BOOST_MILESTONES[BOOST_MILESTONES.length - 1];
-        let timeRemaining = calculateExactRemainingTime(startDate, targetMonth);
+        let timeRemaining = calculatePerfectRemainingTime(startDate, targetMonth);
 
         return message.reply({
             content: `<@${message.author.id}> 💎 **معلومات شارة البوست:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
