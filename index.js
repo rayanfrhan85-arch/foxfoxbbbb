@@ -32,48 +32,7 @@ const BOOST_MILESTONES = [
     { label: "15M", months: 15 }, { label: "18M", months: 18 }, { label: "24M", months: 24 }
 ];
 
-// دالة حساب الوقت الدقيق
-function calculateExactRemainingTime(startDate, targetMonths) {
-    const now = new Date();
-    const targetDate = new Date(startDate.getTime());
-    targetDate.setMonth(targetDate.getMonth() + targetMonths);
-
-    let diffMs = targetDate.getTime() - now.getTime();
-    if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك";
-
-    let temp = new Date(now.getTime());
-    let months = 0;
-
-    while (true) {
-        let testDate = new Date(temp.getTime());
-        testDate.setMonth(testDate.getMonth() + 1);
-        if (testDate <= targetDate) {
-            months++;
-            temp = testDate;
-        } else {
-            break;
-        }
-    }
-
-    let remainingSeconds = Math.floor((targetDate.getTime() - temp.getTime()) / 1000);
-    let days = Math.floor(remainingSeconds / (3600 * 24));
-    remainingSeconds %= (3600 * 24);
-    let hours = Math.floor(remainingSeconds / 3600);
-    remainingSeconds %= 3600;
-    let minutes = Math.floor(remainingSeconds / 60);
-
-    let parts = [];
-    if (months > 0) parts.push(`${months} أشهر`);
-    if (days > 0) parts.push(`${days} يوم`);
-    if (hours > 0) parts.push(`${hours} ساعة`);
-    if (minutes > 0) parts.push(`${minutes} دقيقة`);
-
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
-
-    return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
-}
-
-// دالة بطاقة عدم وجود النيترو
+// بطاقة عدم وجود النيترو
 async function generateNoBadgeCard() {
     const width = 800;
     const height = 420;
@@ -96,7 +55,7 @@ async function generateNoBadgeCard() {
     return canvas.toBuffer('image/png');
 }
 
-// دالة بطاقة النيترو
+// دالة بطاقة النيترو (تحمل صورتك الجاهزة وترسم شريط التقدم فقط بدقة بدون أي نصوص مطبوعة برمجياً)
 async function generateNitroBadgeCard(startDate, milestones) {
     const width = 800;
     const height = 420;
@@ -116,15 +75,11 @@ async function generateNitroBadgeCard(startDate, milestones) {
         }
     }
 
+    // حساب المدة الزمنية بدقة للمستخدم لتعبئة الخط فقط
     const now = new Date();
-    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-    if (now.getDate() < startDate.getDate()) {
-        currentMonths--;
-    }
-    currentMonths = Math.max(0, currentMonths);
-
-    let nextMilestone = milestones.find(m => m.months > currentMonths);
-    if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
+    const diffTime = Math.abs(now - startDate);
+    const totalDaysElapsed = diffTime / (1000 * 60 * 60 * 24);
+    const currentMonths = totalDaysElapsed / 30.4375;
 
     const startX = 65;
     const endX = width - 65;
@@ -134,6 +89,7 @@ async function generateNitroBadgeCard(startDate, milestones) {
     const maxMonths = milestones[milestones.length - 1].months;
     const progressRatio = Math.min(1, currentMonths / maxMonths);
 
+    // رسم شريط التقدم المضيء بدقة فوق خط الصورة بدون أي نصوص
     if (progressRatio > 0) {
         ctx.fillStyle = '#c252ff';
         ctx.shadowColor = '#c252ff';
@@ -143,14 +99,6 @@ async function generateNitroBadgeCard(startDate, milestones) {
         ctx.fill();
         ctx.shadowBlur = 0;
     }
-
-    const remainingText = calculateExactRemainingTime(startDate, nextMilestone.months);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 8;
-    ctx.fillText(remainingText, width / 2, 280);
 
     return canvas.toBuffer('image/png');
 }
@@ -176,14 +124,9 @@ async function generateBoostBadgeCard(startDate, milestones) {
     }
 
     const now = new Date();
-    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-    if (now.getDate() < startDate.getDate()) {
-        currentMonths--;
-    }
-    currentMonths = Math.max(0, currentMonths);
-
-    let nextMilestone = milestones.find(m => m.months > currentMonths);
-    if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
+    const diffTime = Math.abs(now - startDate);
+    const totalDaysElapsed = diffTime / (1000 * 60 * 60 * 24);
+    const currentMonths = totalDaysElapsed / 30.4375;
 
     const startX = 65;
     const endX = width - 65;
@@ -202,14 +145,6 @@ async function generateBoostBadgeCard(startDate, milestones) {
         ctx.fill();
         ctx.shadowBlur = 0;
     }
-
-    const remainingText = calculateExactRemainingTime(startDate, nextMilestone.months);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 8;
-    ctx.fillText(remainingText, width / 2, 280);
 
     return canvas.toBuffer('image/png');
 }
@@ -267,7 +202,7 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // أمر البوست (-b / -boost) - تم إرجاعه وتفعيله
+    // أمر البوست (-b / -boost)
     if (command === 'b' || command === 'boost') {
         if (!member || !member.premiumSince) {
             return message.reply({ content: `<@${message.author.id}> أنت لست مساهماً ببوست في هذا السيرفر حالياً` });
