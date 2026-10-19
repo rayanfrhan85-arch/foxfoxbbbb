@@ -15,30 +15,28 @@ const client = new Client({
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت الدقيق والمطابق تماماً للبوت الثاني
-function getPreciseRemainingTime(startDate, targetMonths) {
+// دالة الحساب الدقيقة والمطابقة 100% للبوت الثاني (شهر، أسابيع، أيام، ساعات، دقائق)
+function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
-    let diffMs = targetDate.getTime() - now.getTime();
-    if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك";
+    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك";
 
-    let temp = new Date(now.getTime());
-    let months = 0;
+    let yearsDiff = targetDate.getFullYear() - now.getFullYear();
+    let monthsDiff = targetDate.getMonth() - now.getMonth();
+    let totalMonths = yearsDiff * 12 + monthsDiff;
 
-    while (true) {
-        let testDate = new Date(temp.getTime());
-        testDate.setMonth(testDate.getMonth() + 1);
-        if (testDate <= targetDate) {
-            months++;
-            temp = testDate;
-        } else {
-            break;
-        }
+    let tempDate = new Date(now.getTime());
+    tempDate.setMonth(tempDate.getMonth() + totalMonths);
+
+    if (tempDate > targetDate) {
+        totalMonths--;
+        tempDate = new Date(now.getTime());
+        tempDate.setMonth(tempDate.getMonth() + totalMonths);
     }
 
-    let remainingMs = targetDate.getTime() - temp.getTime();
+    let remainingMs = targetDate.getTime() - tempDate.getTime();
     let totalDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
     let weeks = Math.floor(totalDays / 7);
     let days = totalDays % 7;
@@ -49,7 +47,7 @@ function getPreciseRemainingTime(startDate, targetMonths) {
     let minutes = Math.floor(remainingMs / (1000 * 60));
 
     let parts = [];
-    if (months > 0) parts.push(`${months} شهر`);
+    if (totalMonths > 0) parts.push(`${totalMonths} شهر`);
     if (weeks > 0) parts.push(`${weeks} أسابيع`);
     if (days > 0) parts.push(`${days} أيام`);
     if (hours > 0) parts.push(`${hours} ساعة`);
@@ -105,27 +103,17 @@ client.on('messageCreate', async (message) => {
             });
         }
 
-        // حساب تاريخ بداية النيترو بشكل دقيق ومضبوط يمنع حساب سنين الحساب القديمة
-        let startDate;
-        if (member && member.premiumSince) {
-            startDate = new Date(member.premiumSince);
-        } else {
-            // اعتماد تاريخ مبدئي ذكي يطابق الحسابات الدقيقة للنيترو
-            startDate = new Date(user.createdTimestamp);
-            // إذا كان الحساب قديم جداً، نقوم بتقريب الفارق ليعطي الشارة الحالية بدقة
-            const now = new Date();
-            let diffYears = now.getFullYear() - startDate.getFullYear();
-            if (diffYears > 0) {
-                startDate.setFullYear(now.getFullYear() - 1); // تعديل تلقائي ليطابق مدة الاشتراك الواقعية
-            }
-        }
-
-        const now = new Date();
-        const diffTime = Math.abs(now - startDate);
-        const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
+        // تحديد تاريخ البداية للنيترو بدقة تامة
+        let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
+        
+        // حساب الشهور المنقضية بدقة لمعرفة الشارة التالية المستهدفة
+        let now = new Date();
+        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+        if (now.getDate() < startDate.getDate()) currentMonths--;
+        currentMonths = Math.max(0, currentMonths);
 
         let targetMonth = NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1];
-        let timeRemaining = getPreciseRemainingTime(startDate, targetMonth);
+        let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
         return message.reply({
             content: `<@${message.author.id}> 🌟 **معلومات اشارة النيترو:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
@@ -139,12 +127,13 @@ client.on('messageCreate', async (message) => {
         }
 
         const startDate = new Date(member.premiumSince);
-        const now = new Date();
-        const diffTime = Math.abs(now - startDate);
-        const currentMonths = (diffTime / (1000 * 60 * 60 * 24)) / 30.4375;
+        let now = new Date();
+        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+        if (now.getDate() < startDate.getDate()) currentMonths--;
+        currentMonths = Math.max(0, currentMonths);
 
         let targetMonth = BOOST_MILESTONES_MONTHS.find(m => m > currentMonths) || BOOST_MILESTONES_MONTHS[BOOST_MILESTONES_MONTHS.length - 1];
-        let timeRemaining = getPreciseRemainingTime(startDate, targetMonth);
+        let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
         return message.reply({
             content: `<@${message.author.id}> 💎 **معلومات شارة البوست:**\n⏳ ${timeRemaining}\n🛠️ DEV: FOX | REBA SERVER`
@@ -170,11 +159,11 @@ client.on('messageCreate', async (message) => {
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         const now = new Date();
-        const diffTime = Math.abs(now - startDate);
-        const currentMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375));
+        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+        if (now.getDate() < startDate.getDate()) currentMonths--;
 
         return message.reply({
-            content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة المضيئة:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
+            content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة المضيئة:** ${Math.max(0, currentMonths)} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
         });
     }
 });
