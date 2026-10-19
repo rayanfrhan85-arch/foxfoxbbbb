@@ -55,32 +55,101 @@ function drawCreativeWatermarks(ctx, width, height) {
     ctx.restore();
 }
 
-// دالة حساب الوقت الدقيق بدون علامات تعجب وفواصل
-function calculateExactRemainingTime(targetDate) {
+// دالة الحساب الدقيق جداً بالوقت المتبقي لشارة البوست/النيترو التالية
+function calculateExactRemainingTime(startDate, targetMonths) {
     const now = new Date();
-    let diffMs = targetDate - now;
+    
+    // التاريخ المستهدف للوصول للشارة
+    const targetDate = new Date(startDate.getTime());
+    targetDate.setMonth(targetDate.getMonth() + targetMonths);
+
+    let diffMs = targetDate.getTime() - now.getTime();
 
     if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك";
 
-    const totalSeconds = Math.floor(diffMs / 1000);
-    const totalMinutes = Math.floor(totalSeconds / 60);
-    const totalHours = Math.floor(totalMinutes / 60);
-    const totalDays = Math.floor(totalHours / 24);
+    // حساب السنوات/الأشهر/الأيام/الساعات/الدقائق
+    let temp = new Date(now.getTime());
+    let months = 0;
 
-    const months = Math.floor(totalDays / 30.4375);
-    const days = Math.floor(totalDays % 30.4375);
-    const hours = totalHours % 24;
-    const minutes = totalMinutes % 60;
+    while (true) {
+        let testDate = new Date(temp.getTime());
+        testDate.setMonth(testDate.getMonth() + 1);
+        if (testDate <= targetDate) {
+            months++;
+            temp = testDate;
+        } else {
+            break;
+        }
+    }
+
+    let remainingSeconds = Math.floor((targetDate.getTime() - temp.getTime()) / 1000);
+    let days = Math.floor(remainingSeconds / (3600 * 24));
+    remainingSeconds %= (3600 * 24);
+    let hours = Math.floor(remainingSeconds / 3600);
+    remainingSeconds %= 3600;
+    let minutes = Math.floor(remainingSeconds / 60);
 
     let parts = [];
     if (months > 0) parts.push(`${months} أشهر`);
-    if (days > 0) parts.push(`${days} يوم ${hours} ساعة`);
-    else if (hours > 0) parts.push(`${hours} ساعة`);
+    if (days > 0) parts.push(`${days} يوم`);
+    if (hours > 0) parts.push(`${hours} ساعة`);
     if (minutes > 0) parts.push(`${minutes} دقيقة`);
 
     if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
+}
+
+// رسم أشكال جواهر البوست الوردية المضيئة والمشابهة للأصلية
+function drawBoostDiamond(ctx, x, y, size, isActive) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    if (isActive) {
+        // جوهرة وردية مشرقة
+        ctx.fillStyle = '#f47fff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size * 0.8, -size * 0.3);
+        ctx.lineTo(size * 0.8, size * 0.3);
+        ctx.lineTo(0, size);
+        ctx.lineTo(-size * 0.8, size * 0.3);
+        ctx.lineTo(-size * 0.8, -size * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // تفاصيل داخلية للبريق
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.6);
+        ctx.lineTo(size * 0.3, 0);
+        ctx.lineTo(0, size * 0.6);
+        ctx.lineTo(-size * 0.3, 0);
+        ctx.closePath();
+        ctx.fill();
+    } else {
+        // جوهرة داكنة للشارات غير المفعلة
+        ctx.fillStyle = '#2a1f3d';
+        ctx.strokeStyle = '#43325e';
+        ctx.lineWidth = 1.5;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -size * 0.8);
+        ctx.lineTo(size * 0.6, -size * 0.2);
+        ctx.lineTo(size * 0.6, size * 0.2);
+        ctx.lineTo(0, size * 0.8);
+        ctx.lineTo(-size * 0.6, size * 0.2);
+        ctx.lineTo(-size * 0.6, -size * 0.2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    ctx.restore();
 }
 
 // بطاقة عدم وجود الشارة
@@ -128,7 +197,7 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     try {
         const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
         ctx.drawImage(bg, 0, 0, width, height);
-        ctx.fillStyle = 'rgba(8, 2, 15, 0.85)';
+        ctx.fillStyle = 'rgba(8, 2, 15, 0.88)';
         ctx.fillRect(0, 0, width, height);
     } catch (e) {
         ctx.fillStyle = '#0a0512';
@@ -145,15 +214,16 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     ctx.fillText(titleText, width / 2, 65);
 
     const now = new Date();
-    const diffMs = Math.max(0, now - startDate);
-    const totalDays = diffMs / (1000 * 60 * 60 * 24);
-    const currentMonths = totalDays / 30.4375;
+    
+    // حساب الأشهر الفعلية بدقة
+    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+    if (now.getDate() < startDate.getDate()) {
+        currentMonths--;
+    }
+    currentMonths = Math.max(0, currentMonths);
 
     let nextMilestone = milestones.find(m => m.months > currentMonths);
     if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
-
-    const nextBadgeDate = new Date(startDate.getTime());
-    nextBadgeDate.setMonth(nextBadgeDate.getMonth() + nextMilestone.months);
 
     const startX = 65;
     const endX = width - 65;
@@ -164,24 +234,19 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
         const x = startX + (i * step);
         const isActive = currentMonths >= m.months;
 
-        ctx.beginPath();
         if (isNitro) {
+            ctx.beginPath();
             ctx.arc(x, iconsY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? '#f47fff' : '#2c2538';
+            ctx.fill();
+            if (isActive) {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            }
         } else {
-            ctx.moveTo(x, iconsY - 18);
-            ctx.lineTo(x + 16, iconsY);
-            ctx.lineTo(x, iconsY + 18);
-            ctx.lineTo(x - 16, iconsY);
-            ctx.closePath();
-        }
-        
-        ctx.fillStyle = isActive ? (isNitro ? '#f47fff' : '#ff73fa') : '#2c2538';
-        ctx.fill();
-
-        if (isActive) {
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
+            // رسم شارات البوست بالأشكال المضيئة
+            drawBoostDiamond(ctx, x, iconsY, 16, isActive);
         }
 
         ctx.fillStyle = isActive ? '#ffffff' : '#777088';
@@ -208,20 +273,26 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
         ctx.fill();
     }
 
-    const remainingText = calculateExactRemainingTime(nextBadgeDate);
+    // حساب النص المتبقي المباشر والدقيق جداً
+    const remainingText = calculateExactRemainingTime(startDate, nextMilestone.months);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'italic bold 22px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(remainingText, width / 2, progressBarY + 60);
 
+    // الشارة الحالية بالأسفل
     const currentBadgeY = progressBarY + 110;
-    ctx.beginPath();
-    ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
-    ctx.fillStyle = isNitro ? '#f47fff' : '#ff73fa';
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
+    if (isNitro) {
+        ctx.beginPath();
+        ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#f47fff';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+    } else {
+        drawBoostDiamond(ctx, width / 2, currentBadgeY, 22, true);
+    }
 
     drawCreativeWatermarks(ctx, width, height);
 
@@ -309,7 +380,7 @@ client.on('messageCreate', async (message) => {
     }
 
     // ===================================
-    // أمر معلومات النيترو (-t / -type) - نصي مرتب مثل الأول
+    // أمر معلومات النيترو (-t / -type) - نصي مرتب
     // ===================================
     if (command === 't' || command === 'type') {
         const userFlags = user.flags ? user.flags.toArray() : [];
@@ -329,9 +400,12 @@ client.on('messageCreate', async (message) => {
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         const now = new Date();
-        const diffMs = Math.max(0, now - startDate);
-        const totalDays = diffMs / (1000 * 60 * 60 * 24);
-        const currentMonths = Math.floor(totalDays / 30.4375);
+        
+        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+        if (now.getDate() < startDate.getDate()) {
+            currentMonths--;
+        }
+        currentMonths = Math.max(0, currentMonths);
 
         return message.reply({
             content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة التقريبية المضيئة:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
