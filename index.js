@@ -17,14 +17,14 @@ const PREFIX = "-";
 
 // مستويات النيترو بالشهور
 const NITRO_MILESTONES = [
-    { label: "1m", months: 1 },
-    { label: "3m", months: 3 },
-    { label: "6m", months: 6 },
-    { label: "1y", months: 12 },
-    { label: "2y", months: 24 },
-    { label: "3y", months: 36 },
-    { label: "5y", months: 60 },
-    { label: "6y", months: 72 }
+    { label: "1m", months: 1, color: "#e67e22" },
+    { label: "3m", months: 3, color: "#bdc3c7" },
+    { label: "6m", months: 6, color: "#f1c40f" },
+    { label: "1y", months: 12, color: "#3498db" },
+    { label: "2y", months: 24, color: "#9b59b6" },
+    { label: "3y", months: 36, color: "#2ecc71" },
+    { label: "5y", months: 60, color: "#e74c3c" },
+    { label: "6y", months: 72, color: "#1abc9c" }
 ];
 
 // مستويات البوست بالشهور
@@ -40,27 +40,27 @@ const BOOST_MILESTONES = [
     { label: "24M", months: 24 }
 ];
 
-// دالة رسم حقوق المطور والسيرفر مع إيموجي الأدوات والدرع
+// دالة رسم حقوق المطور والسيرفر الإبداعية
 function drawCreativeWatermarks(ctx, width, height) {
     ctx.save();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('🛡️ REBA SERVER', width - 25, height - 20);
+    ctx.fillText('REBA SERVER', width - 25, height - 20);
 
     ctx.fillStyle = '#ff73fa';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('🛠️ DEV: FOX', 25, height - 20);
+    ctx.fillText('DEV: FOX', 25, height - 20);
     ctx.restore();
 }
 
-// دالة حساب الوقت المتبقي
+// دالة حساب الوقت المتبقي بدون فواصل أو مربعات
 function calculateExactRemainingTime(targetDate) {
     const now = new Date();
     let diffMs = targetDate - now;
 
-    if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك 🎉";
+    if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك";
 
     const totalSeconds = Math.floor(diffMs / 1000);
     const totalMinutes = Math.floor(totalSeconds / 60);
@@ -78,12 +78,12 @@ function calculateExactRemainingTime(targetDate) {
     else if (hours > 0) parts.push(`${hours} ساعة`);
     if (minutes > 0) parts.push(`${minutes} دقيقة`);
 
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⏳";
+    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
 
-    return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')} ⏳`;
+    return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
 }
 
-// بطاقة عدم وجود الشارة مع إيموجي تنبيه
+// بطاقة عدم وجود الشارة (نصوص ناعمة بدون مربعات إيموجي)
 async function generateNoBadgeCard(titleText, iraqiMessage) {
     const width = 800;
     const height = 420;
@@ -107,18 +107,18 @@ async function generateNoBadgeCard(titleText, iraqiMessage) {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 38px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`❌ ${titleText}`, width / 2, 85);
+    ctx.fillText(titleText, width / 2, 85);
 
     ctx.fillStyle = '#ff5c5c';
     ctx.font = 'bold 26px sans-serif';
-    ctx.fillText(`⚠️ ${iraqiMessage}`, width / 2, 215);
+    ctx.fillText(iraqiMessage, width / 2, 215);
 
     drawCreativeWatermarks(ctx, width, height);
 
     return canvas.toBuffer('image/png');
 }
 
-// بطاقة أمر -t (معلومات الاشتراك المليئة بالإيموجيات)
+// بطاقة أمر -t (معلومات الاشتراك)
 async function generateTypeCard(userName, nitroTypeDesc, startDate) {
     const width = 800;
     const height = 420;
@@ -139,18 +139,15 @@ async function generateTypeCard(userName, nitroTypeDesc, startDate) {
     ctx.lineWidth = 3;
     ctx.strokeRect(12, 12, width - 24, height - 24);
 
-    // عنوان البطاقة مع إيموجي البحث والمكالمة
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px sans-serif';
+    ctx.font = 'bold 36px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`📊 معلومات اشتراك: ${userName}`, width / 2, 90);
+    ctx.fillText(`معلومات اشتراك: ${userName}`, width / 2, 90);
 
-    // نوع الاشتراك مع إيموجي الدبوس والصاروخ
     ctx.fillStyle = '#ff73fa';
     ctx.font = 'bold 26px sans-serif';
-    ctx.fillText(`📌 نوع الاشتراك: ${nitroTypeDesc}`, width / 2, 180);
+    ctx.fillText(`نوع الاشتراك: ${nitroTypeDesc}`, width / 2, 180);
 
-    // المدة المضيئة مع إيموجي التقويم والساعة
     const now = new Date();
     const diffMs = Math.max(0, now - startDate);
     const totalDays = diffMs / (1000 * 60 * 60 * 24);
@@ -158,14 +155,14 @@ async function generateTypeCard(userName, nitroTypeDesc, startDate) {
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 24px sans-serif';
-    ctx.fillText(`📅 المدة التقريبية المضيئة: ${currentMonths} أشهر تقريباً ⏳`, width / 2, 270);
+    ctx.fillText(`المدة التقريبية المضيئة: ${currentMonths} أشهر تقريباً`, width / 2, 270);
 
     drawCreativeWatermarks(ctx, width, height);
 
     return canvas.toBuffer('image/png');
 }
 
-// دالة رسم بطاقات الشارات الأساسية (-n و -b)
+// دالة رسم أشكال الجواهر المخصصة للبوست والشارات المخصصة للنيترو
 async function generateBadgeCard(titleText, startDate, milestones, isNitro = false) {
     const width = 800;
     const height = 420;
@@ -189,7 +186,7 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 42px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(isNitro ? `✨ ${titleText}` : `💎 ${titleText}`, width / 2, 65);
+    ctx.fillText(titleText, width / 2, 65);
 
     const now = new Date();
     const diffMs = Math.max(0, now - startDate);
@@ -211,32 +208,46 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
         const x = startX + (i * step);
         const isActive = currentMonths >= m.months;
 
-        ctx.beginPath();
+        ctx.save();
         if (isNitro) {
+            // رسم شارات النيترو
+            ctx.beginPath();
             ctx.arc(x, iconsY, 16, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? (m.color || '#f47fff') : '#2c2538';
+            ctx.fill();
+            if (isActive) {
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            }
         } else {
+            // رسم شكل ألماسة/بوست متناسقة بدون مربعات
+            ctx.beginPath();
             ctx.moveTo(x, iconsY - 18);
-            ctx.lineTo(x + 16, iconsY);
+            ctx.lineTo(x + 15, iconsY);
             ctx.lineTo(x, iconsY + 18);
-            ctx.lineTo(x - 16, iconsY);
+            ctx.lineTo(x - 15, iconsY);
             ctx.closePath();
-        }
-        
-        ctx.fillStyle = isActive ? (isNitro ? '#f47fff' : '#ff73fa') : '#2c2538';
-        ctx.fill();
 
-        if (isActive) {
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-        }
+            ctx.fillStyle = isActive ? '#ff73fa' : '#2c2538';
+            ctx.fill();
 
+            if (isActive) {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+
+        // أسماء الشارات وتحت الأيقونات
         ctx.fillStyle = isActive ? '#ffffff' : '#777088';
         ctx.font = 'italic bold 18px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(m.label, x, iconsY + 45);
     });
 
+    // شريط التقدم
     const progressBarY = iconsY + 65;
     const barWidth = endX - startX;
     
@@ -261,14 +272,26 @@ async function generateBadgeCard(titleText, startDate, milestones, isNitro = fal
     ctx.textAlign = 'center';
     ctx.fillText(remainingText, width / 2, progressBarY + 60);
 
+    // الشارة الحالية في الأسفل
     const currentBadgeY = progressBarY + 110;
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
-    ctx.fillStyle = isNitro ? '#f47fff' : '#ff73fa';
+    if (isNitro) {
+        ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
+        ctx.fillStyle = '#f47fff';
+    } else {
+        ctx.moveTo(width / 2, currentBadgeY - 22);
+        ctx.lineTo(width / 2 + 18, currentBadgeY);
+        ctx.lineTo(width / 2, currentBadgeY + 22);
+        ctx.lineTo(width / 2 - 18, currentBadgeY);
+        ctx.closePath();
+        ctx.fillStyle = '#ff73fa';
+    }
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
+    ctx.restore();
 
     drawCreativeWatermarks(ctx, width, height);
 
@@ -367,9 +390,9 @@ client.on('messageCreate', async (message) => {
 
         let nitroType = "غير مفعل";
         if (userFlags.some(f => f.includes('Nitro')) || isAnimatedAvatar || isCustomBanner || avatarDecoration) {
-            nitroType = isBoosting ? "Discord Nitro Boost 🚀" : "Discord Nitro Classic ✨";
+            nitroType = isBoosting ? "Discord Nitro Boost" : "Discord Nitro Classic";
         } else if (isBoosting) {
-            nitroType = "Server Booster 💎";
+            nitroType = "Server Booster فقط";
         } else {
             const imageBuffer = await generateNoBadgeCard('معلومات الاشتراك', 'كلشي ماعندك يمعود تعال اشتري وتعال');
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-type.png' });
