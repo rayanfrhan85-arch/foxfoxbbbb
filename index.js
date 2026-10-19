@@ -15,18 +15,7 @@ const client = new Client({
 
 const PREFIX = "-";
 
-// روابط شارات النيترو الملونة الرسمية الحقيقية
-const NITRO_BADGE_URLS = [
-    "https://cdn.discordapp.com/badge-icons/2ba85e802c7f0d03b30200877990d0b0.png",
-    "https://cdn.discordapp.com/badge-icons/e9b1114b726c04f5e3e29f59f6356e84.png",
-    "https://cdn.discordapp.com/badge-icons/011928099e4f20f019f6229c92e42817.png",
-    "https://cdn.discordapp.com/badge-icons/3aed58a2d1d03339167389ed301b4478.png",
-    "https://cdn.discordapp.com/badge-icons/862ae21808b8b09d29e3a65c92f15e71.png",
-    "https://cdn.discordapp.com/badge-icons/24a8e63a13a2908f0376c3ef6f4b66b3.png",
-    "https://cdn.discordapp.com/badge-icons/0a020be0ba80874017f8a37943f29051.png",
-    "https://cdn.discordapp.com/badge-icons/3c0a5d2b7754f9d6b9a8cf4f36a87c12.png"
-];
-
+// مستويات النيترو بالشهور
 const NITRO_MILESTONES = [
     { label: "1m", months: 1 },
     { label: "3m", months: 3 },
@@ -58,7 +47,8 @@ function drawCreativeWatermarks(ctx, width, height) {
     ctx.restore();
 }
 
-function calculateNitroRemainingTime(startDate, targetMonths) {
+// حساب الوقت الدقيق والتقويمي للنيترو بالفيمتو ثانية
+function calculateExactNitroRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
@@ -98,15 +88,14 @@ function calculateNitroRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
 }
 
-// دالة عرض صورتك الخاصة المرفوعة (no_nitro_bg.png) لمن ليس لديه اشتراك
-async function generateNoBadgeCard(titleText, iraqiMessage) {
+// بطاقة عدم وجود النيترو (تعتمد على no_nitro_bg.png المرفقة سابقاً)
+async function generateNoBadgeCard() {
     const width = 800;
     const height = 420;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
     try {
-        // قراءة صورتك المخصصة اللي رفعتها باسم no_nitro_bg.png
         const customBg = await loadImage(path.join(__dirname, 'no_nitro_bg.png'));
         ctx.drawImage(customBg, 0, 0, width, height);
     } catch (e) {
@@ -121,95 +110,53 @@ async function generateNoBadgeCard(titleText, iraqiMessage) {
         }
     }
 
-    // النص العراقي المطلوب يظهر بدقة فوق صورتك الخاصة
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 10;
-    ctx.fillText(iraqiMessage, width / 2, 355);
-
     drawCreativeWatermarks(ctx, width, height);
-
     return canvas.toBuffer('image/png');
 }
 
-// رسم بطاقة النيترو الطبيعية للمشتركين فوق خلفية reba_bg.png
-async function generateNitroBadgeCard(titleText, startDate, milestones) {
+// بطاقة النيترو للمشتركين (تعتمد على صورتك الجديدة nitro_bg.png وترسم خط التقدم بدقة)
+async function generateNitroBadgeCard(startDate, milestones) {
     const width = 800;
     const height = 420;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
     try {
-        const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
-        ctx.drawImage(bg, 0, 0, width, height);
-        ctx.fillStyle = 'rgba(8, 2, 15, 0.88)';
-        ctx.fillRect(0, 0, width, height);
+        // قراءة صورتك الجديدة الخاصة بالنيترو nitro_bg.png
+        const nitroBg = await loadImage(path.join(__dirname, 'nitro_bg.png'));
+        ctx.drawImage(nitroBg, 0, 0, width, height);
     } catch (e) {
-        ctx.fillStyle = '#0a0512';
-        ctx.fillRect(0, 0, width, height);
+        try {
+            const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
+            ctx.drawImage(bg, 0, 0, width, height);
+            ctx.fillStyle = 'rgba(8, 2, 15, 0.88)';
+            ctx.fillRect(0, 0, width, height);
+        } catch (err) {
+            ctx.fillStyle = '#0a0512';
+            ctx.fillRect(0, 0, width, height);
+        }
     }
 
-    ctx.strokeStyle = 'rgba(244, 127, 255, 0.25)';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(12, 12, width - 24, height - 24);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 42px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(titleText, width / 2, 65);
-
     const now = new Date();
-    const diffTime = Math.abs(now - startDate);
-    const totalDaysElapsed = diffTime / (1000 * 60 * 60 * 24);
-    const currentMonths = totalDaysElapsed / 30.4375;
+    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+    if (now.getDate() < startDate.getDate()) {
+        currentMonths--;
+    }
+    currentMonths = Math.max(0, currentMonths);
 
     let nextMilestone = milestones.find(m => m.months > currentMonths);
     if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
 
+    // إحداثيات شريط التقدم لتتطابق بدقة مع مكان الخط في صورتك الجديدة
     const startX = 65;
     const endX = width - 65;
-    const step = (endX - startX) / (milestones.length - 1);
-    const iconsY = 135;
-
-    for (let i = 0; i < milestones.length; i++) {
-        const x = startX + (i * step);
-        const m = milestones[i];
-        const isActive = currentMonths >= m.months;
-
-        try {
-            const badgeImg = await loadImage(NITRO_BADGE_URLS[i]);
-            ctx.save();
-            if (!isActive) {
-                ctx.globalAlpha = 0.25;
-            }
-            ctx.drawImage(badgeImg, x - 20, iconsY - 20, 40, 40);
-            ctx.restore();
-        } catch (e) {
-            ctx.beginPath();
-            ctx.arc(x, iconsY, 16, 0, Math.PI * 2);
-            ctx.fillStyle = isActive ? '#f47fff' : '#2c2538';
-            ctx.fill();
-        }
-
-        ctx.fillStyle = isActive ? '#ffffff' : '#777088';
-        ctx.font = 'italic bold 18px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(m.label, x, iconsY + 45);
-    }
-
-    const progressBarY = iconsY + 65;
+    const progressBarY = 195; 
     const barWidth = endX - startX;
-    
-    ctx.fillStyle = '#3a3148';
-    ctx.beginPath();
-    ctx.roundRect(startX, progressBarY, barWidth, 14, 7);
-    ctx.fill();
 
     const maxMonths = milestones[milestones.length - 1].months;
     const progressRatio = Math.min(1, currentMonths / maxMonths);
-    
+
+    // رسم شريط التقدم المضيء بناءً على وقت المشترك الحقيقي
     if (progressRatio > 0) {
         ctx.fillStyle = '#c252ff';
         ctx.beginPath();
@@ -217,25 +164,14 @@ async function generateNitroBadgeCard(titleText, startDate, milestones) {
         ctx.fill();
     }
 
-    const remainingText = calculateNitroRemainingTime(startDate, nextMilestone.months);
+    // كتابة النص الدقيق للوقت المتبقي للشارة التالية في المكان المخصص بالصورة
+    const remainingText = calculateExactNitroRemainingTime(startDate, nextMilestone.months);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'italic bold 22px sans-serif';
+    ctx.font = 'bold 24px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(remainingText, width / 2, progressBarY + 60);
-
-    const currentBadgeY = progressBarY + 110;
-    let activeIndex = milestones.filter(m => currentMonths >= m.months).length - 1;
-    if (activeIndex < 0) activeIndex = 0;
-
-    try {
-        const activeBadgeImg = await loadImage(NITRO_BADGE_URLS[activeIndex]);
-        ctx.drawImage(activeBadgeImg, (width / 2) - 24, currentBadgeY - 24, 48, 48);
-    } catch (e) {
-        ctx.beginPath();
-        ctx.arc(width / 2, currentBadgeY, 22, 0, Math.PI * 2);
-        ctx.fillStyle = '#f47fff';
-        ctx.fill();
-    }
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 8;
+    ctx.fillText(remainingText, width / 2, 280);
 
     drawCreativeWatermarks(ctx, width, height);
 
@@ -277,8 +213,7 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            // استخدام صورتك الخاصة (no_nitro_bg.png) مع النص المطلوب
-            const imageBuffer = await generateNoBadgeCard('اشارة النيترو', 'اكو غلط !! هسة عرفت انت ماعندك هاي شارة يمعود');
+            const imageBuffer = await generateNoBadgeCard();
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-nitro.png' });
             return message.reply({
                 content: `<@${message.author.id}>`,
@@ -288,7 +223,7 @@ client.on('messageCreate', async (message) => {
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
 
-        const imageBuffer = await generateNitroBadgeCard('اشارة النيترو', startDate, NITRO_MILESTONES);
+        const imageBuffer = await generateNitroBadgeCard(startDate, NITRO_MILESTONES);
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-nitro.png' });
 
         return message.reply({
