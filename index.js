@@ -98,7 +98,7 @@ function calculateNitroRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
 }
 
-// بطاقة عدم وجود الشارة (مطابقة للصورة تماماً: إطار معدني، شارات رمادية باهتة، شريط معتم، والنص المطلوب)[cite: 16]
+// دالة عرض صورتك الخاصة المرفوعة (no_nitro_bg.png) لمن ليس لديه اشتراك
 async function generateNoBadgeCard(titleText, iraqiMessage) {
     const width = 800;
     const height = 420;
@@ -106,80 +106,35 @@ async function generateNoBadgeCard(titleText, iraqiMessage) {
     const ctx = canvas.getContext('2d');
 
     try {
-        const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
-        ctx.drawImage(bg, 0, 0, width, height);
-        ctx.fillStyle = 'rgba(10, 14, 23, 0.92)';
-        ctx.fillRect(0, 0, width, height);
+        // قراءة صورتك المخصصة اللي رفعتها باسم no_nitro_bg.png
+        const customBg = await loadImage(path.join(__dirname, 'no_nitro_bg.png'));
+        ctx.drawImage(customBg, 0, 0, width, height);
     } catch (e) {
-        ctx.fillStyle = '#0a0e17';
-        ctx.fillRect(0, 0, width, height);
-    }
-
-    // الإطار المعدني المزدوج الفخم المظلم
-    ctx.strokeStyle = '#2b3b5c';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(10, 10, width - 20, height - 20);
-
-    ctx.strokeStyle = '#121824';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(18, 18, width - 36, height - 36);
-
-    // عنوان البطاقة
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 42px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(titleText, width / 2, 70);
-
-    const startX = 65;
-    const endX = width - 65;
-    const step = (endX - startX) / (NITRO_MILESTONES.length - 1);
-    const iconsY = 135;
-
-    // رسم الشارات بشكل باهت ومطفأ تماماً مثل الصورة
-    for (let i = 0; i < NITRO_MILESTONES.length; i++) {
-        const x = startX + (i * step);
-        const m = NITRO_MILESTONES[i];
-
         try {
-            const badgeImg = await loadImage(NITRO_BADGE_URLS[i]);
-            ctx.save();
-            ctx.globalAlpha = 0.2; // تعتيم الشارات
-            ctx.drawImage(badgeImg, x - 20, iconsY - 20, 40, 40);
-            ctx.restore();
-        } catch (e) {
-            ctx.beginPath();
-            ctx.arc(x, iconsY, 16, 0, Math.PI * 2);
-            ctx.fillStyle = '#2c2538';
-            ctx.fill();
+            const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
+            ctx.drawImage(bg, 0, 0, width, height);
+            ctx.fillStyle = 'rgba(10, 14, 23, 0.90)';
+            ctx.fillRect(0, 0, width, height);
+        } catch (err) {
+            ctx.fillStyle = '#0a0e17';
+            ctx.fillRect(0, 0, width, height);
         }
-
-        ctx.fillStyle = '#777088';
-        ctx.font = 'italic bold 18px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(m.label, x, iconsY + 45);
     }
 
-    // شريط البرق المعتم والفخم
-    const progressBarY = iconsY + 65;
-    const barWidth = endX - startX;
-    
-    ctx.fillStyle = '#181f2c';
-    ctx.beginPath();
-    ctx.roundRect(startX, progressBarY, barWidth, 14, 7);
-    ctx.fill();
-
-    // النص العراقي المطلوب בדיוק مثل الصورة[cite: 16]
+    // النص العراقي المطلوب يظهر بدقة فوق صورتك الخاصة
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px sans-serif';
+    ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(iraqiMessage, width / 2, progressBarY + 95);
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 10;
+    ctx.fillText(iraqiMessage, width / 2, 355);
 
     drawCreativeWatermarks(ctx, width, height);
 
     return canvas.toBuffer('image/png');
 }
 
-// رسم بطاقة النيترو الطبيعية للمشتركين
+// رسم بطاقة النيترو الطبيعية للمشتركين فوق خلفية reba_bg.png
 async function generateNitroBadgeCard(titleText, startDate, milestones) {
     const width = 800;
     const height = 420;
@@ -322,7 +277,7 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            // البطاقة تطابق الصورة المظلمة حرفياً مع النص المطلوب بالضبط[cite: 16]
+            // استخدام صورتك الخاصة (no_nitro_bg.png) مع النص المطلوب
             const imageBuffer = await generateNoBadgeCard('اشارة النيترو', 'اكو غلط !! هسة عرفت انت ماعندك هاي شارة يمعود');
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-nitro.png' });
             return message.reply({
