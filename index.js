@@ -60,7 +60,7 @@ function calculateExactRemainingTime(targetDate) {
     const now = new Date();
     let diffMs = targetDate - now;
 
-    if (diffMs <= 0) return "لقد وصلت إلى أعلى شارة!";
+    if (diffMs <= 0) return "وصلت لنهاية المطاف يمعود، عاشت ايدك!";
 
     const totalSeconds = Math.floor(diffMs / 1000);
     const totalMinutes = Math.floor(totalSeconds / 60);
@@ -78,13 +78,13 @@ function calculateExactRemainingTime(targetDate) {
     else if (hours > 0) parts.push(`${hours} ساعة`);
     if (minutes > 0) parts.push(`${minutes} دقيقة`);
 
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية خلال دقائق قليلة";
+    if (parts.length === 0) return "وراها بشوية وتوصل للشارة التالية!";
 
-    return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
+    return `توصل للشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// بطاقة عدم وجود الشارة
-async function generateNoBadgeCard(titleText) {
+// بطاقة عدم وجود الشارة بالكلام العراقي المرتب
+async function generateNoBadgeCard(titleText, iraqiMessage) {
     const width = 800;
     const height = 420;
     const canvas = createCanvas(width, height);
@@ -105,20 +105,79 @@ async function generateNoBadgeCard(titleText) {
     ctx.strokeRect(15, 15, width - 30, height - 30);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 42px sans-serif';
+    ctx.font = 'bold 38px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(titleText, width / 2, 85);
 
-    ctx.fillStyle = '#ff4a4a';
-    ctx.font = 'bold 30px sans-serif';
-    ctx.fillText("ليس لديك هذه الشارة", width / 2, 215);
+    // الكلام العراقي المرتب
+    ctx.fillStyle = '#ff5c5c';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText(iraqiMessage, width / 2, 215);
 
     drawCreativeWatermarks(ctx, width, height);
 
     return canvas.toBuffer('image/png');
 }
 
-// دالة رسم بطاقات الشارات وتوزيع الأيقونات بدقة
+// دالة رسم معلومات أمر -t (معلومات الاشتراك ونوع النيترو والمدة المتبقية)
+async function generateTypeCard(userName, nitroTypeDesc, startDate, milestones, isNitro = true) {
+    const width = 800;
+    const height = 420;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    try {
+        const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
+        ctx.drawImage(bg, 0, 0, width, height);
+        ctx.fillStyle = 'rgba(8, 2, 15, 0.86)';
+        ctx.fillRect(0, 0, width, height);
+    } catch (e) {
+        ctx.fillStyle = '#0a0512';
+        ctx.fillRect(0, 0, width, height);
+    }
+
+    ctx.strokeStyle = 'rgba(244, 127, 255, 0.3)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(12, 12, width - 24, height - 24);
+
+    // العنوان
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🔍 معلومات اشتراك: ${userName}`, width / 2, 65);
+
+    // نوع الاشتراكات
+    ctx.fillStyle = '#ff73fa';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`📌 النوع: ${nitroTypeDesc}`, width / 2, 140);
+
+    // الحساب والوقت المتبقي
+    const now = new Date();
+    const diffMs = Math.max(0, now - startDate);
+    const totalDays = diffMs / (1000 * 60 * 60 * 24);
+    const currentMonths = totalDays / 30.4375;
+
+    let nextMilestone = milestones.find(m => m.months > currentMonths);
+    if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
+
+    const nextBadgeDate = new Date(startDate.getTime());
+    nextBadgeDate.setMonth(nextBadgeDate.getMonth() + nextMilestone.months);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(`⏳ المدة المضيئة تقريباً: ${Math.floor(currentMonths)} شهر`, width / 2, 210);
+
+    const remainingText = calculateExactRemainingTime(nextBadgeDate);
+    ctx.fillStyle = '#d4d4d4';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(remainingText, width / 2, 275);
+
+    drawCreativeWatermarks(ctx, width, height);
+
+    return canvas.toBuffer('image/png');
+}
+
+// دالة رسم بطاقات الشارات الأساسية (-n و -b)
 async function generateBadgeCard(titleText, startDate, milestones, isNitro = false) {
     const width = 800;
     const height = 420;
@@ -255,7 +314,7 @@ client.on('messageCreate', async (message) => {
         const premiumSince = member ? member.premiumSince : null;
 
         if (!premiumSince) {
-            const imageBuffer = await generateNoBadgeCard('اشارة البوست');
+            const imageBuffer = await generateNoBadgeCard('اشارة البوست', 'وين رايح يمعود، لا بوست ولا هم يحزنون!');
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-boost.png' });
             return message.reply({
                 content: `<@${message.author.id}>`,
@@ -289,7 +348,7 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            const imageBuffer = await generateNoBadgeCard('اشارة النيترو');
+            const imageBuffer = await generateNoBadgeCard('اشارة النيترو', 'وين رايح يمعود، ما عندك هاي الشارة!');
             const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-nitro.png' });
             return message.reply({
                 content: `<@${message.author.id}>`,
@@ -309,7 +368,7 @@ client.on('messageCreate', async (message) => {
     }
 
     // ===================================
-    // الأمر الجديد: فحص نوع النيترو والوقت المتبقي (-t / -type)
+    // أمر معلومات النيترو (-t / -type) كصورة مع منشن
     // ===================================
     if (command === 't' || command === 'type') {
         const userFlags = user.flags ? user.flags.toArray() : [];
@@ -320,21 +379,27 @@ client.on('messageCreate', async (message) => {
 
         let nitroType = "غير مفعل";
         if (userFlags.some(f => f.includes('Nitro')) || isAnimatedAvatar || isCustomBanner || avatarDecoration) {
-            nitroType = isBoosting ? "Discord Nitro (مع بوست للسيرفر 🚀)" : "Discord Nitro Classic / Standard ✨";
+            nitroType = isBoosting ? "Discord Nitro (مع بوست للسيرفر 🚀)" : "Discord Nitro Classic ✨";
         } else if (isBoosting) {
             nitroType = "Server Booster فقط 💎";
         } else {
-            return message.reply({ content: `<@${message.author.id}> ❌ ليس لديك أي اشتراك نيترو او بوست حالياً!` });
+            const imageBuffer = await generateNoBadgeCard('معلومات الاشتراك', 'كلشي ماعندك يمعود، تعال اشتري وتعال!');
+            const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-no-type.png' });
+            return message.reply({
+                content: `<@${message.author.id}>`,
+                files: [attachment]
+            });
         }
 
         const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        const now = new Date();
-        const diffMs = Math.max(0, now - startDate);
-        const totalDays = diffMs / (1000 * 60 * 60 * 24);
-        const currentMonths = Math.floor(totalDays / 30.4375);
+        const displayName = member ? member.displayName : user.username;
+
+        const imageBuffer = await generateTypeCard(displayName, nitroType, startDate, NITRO_MILESTONES, true);
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-type.png' });
 
         return message.reply({
-            content: `🔍 **معلومات اشتراك المستخدم <@${message.author.id}>:**\n📌 **نوع الاشتراك:** ${nitroType}\n⏳ **المدة التقريبية المضيئة:** ${currentMonths} أشهر تقريباً\n🛠️ **DEV: FOX** | **REBA SERVER**`
+            content: `<@${message.author.id}>`,
+            files: [attachment]
         });
     }
 });
