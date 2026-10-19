@@ -32,19 +32,48 @@ const BOOST_MILESTONES = [
     { label: "15M", months: 15 }, { label: "18M", months: 18 }, { label: "24M", months: 24 }
 ];
 
-// دالة الحقوق المحدثة (لون DEV: FOX أخضر وبدون تكرار لـ REBA SERVER لتجنب التشابك)
-function drawGreenWatermark(ctx, width, height) {
-    ctx.save();
-    ctx.fillStyle = '#2ecc71'; // لون أخضر فخم لـ DEV: FOX
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 6;
-    ctx.fillText('DEV: FOX', 25, height - 20);
-    ctx.restore();
+// دالة حساب الوقت الدقيق للنيترو
+function calculateExactNitroRemainingTime(startDate, targetMonths) {
+    const now = new Date();
+    const targetDate = new Date(startDate.getTime());
+    targetDate.setMonth(targetDate.getMonth() + targetMonths);
+
+    let diffMs = targetDate.getTime() - now.getTime();
+    if (diffMs <= 0) return "وصلت لنهاية المطاف عاشت ايدك";
+
+    let temp = new Date(now.getTime());
+    let months = 0;
+
+    while (true) {
+        let testDate = new Date(temp.getTime());
+        testDate.setMonth(testDate.getMonth() + 1);
+        if (testDate <= targetDate) {
+            months++;
+            temp = testDate;
+        } else {
+            break;
+        }
+    }
+
+    let remainingSeconds = Math.floor((targetDate.getTime() - temp.getTime()) / 1000);
+    let days = Math.floor(remainingSeconds / (3600 * 24));
+    remainingSeconds %= (3600 * 24);
+    let hours = Math.floor(remainingSeconds / 3600);
+    remainingSeconds %= 3600;
+    let minutes = Math.floor(remainingSeconds / 60);
+
+    let parts = [];
+    if (months > 0) parts.push(`${months} أشهر`);
+    if (days > 0) parts.push(`${days} يوم`);
+    if (hours > 0) parts.push(`${hours} ساعة`);
+    if (minutes > 0) parts.push(`${minutes} دقيقة`);
+
+    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
+
+    return `سوف تصل الى الشارة التالية بعد ${parts.join(' ')}`;
 }
 
-// دالة عرض بطاقة الشخص الذي ليس لديه نيترو (صورة no_nitro_bg.png)
+// دالة عرض بطاقة الشخص الذي ليس لديه نيترو (بدون أي رسم برمجي للنصوص أو التكرار)
 async function generateNoBadgeCard() {
     const width = 800;
     const height = 420;
@@ -58,20 +87,17 @@ async function generateNoBadgeCard() {
         try {
             const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
             ctx.drawImage(bg, 0, 0, width, height);
-            ctx.fillStyle = 'rgba(10, 14, 23, 0.90)';
-            ctx.fillRect(0, 0, width, height);
         } catch (err) {
             ctx.fillStyle = '#0a0e17';
             ctx.fillRect(0, 0, width, height);
         }
     }
 
-    drawGreenWatermark(ctx, width, height);
     return canvas.toBuffer('image/png');
 }
 
-// دالة عرض بطاقة المشترك بالنيترو (صورة nitro_bg.png بدون تكرار وبدون تشابك)
-async function generateNitroBadgeCard() {
+// دالة عرض بطاقة المشترك بالنيترو (تعرض صورتك الجاهزة وترسم شريط التقدم المتزايد بدقة + حساب الوقت الحقيقي)
+async function generateNitroBadgeCard(startDate, milestones) {
     const width = 800;
     const height = 420;
     const canvas = createCanvas(width, height);
@@ -84,15 +110,51 @@ async function generateNitroBadgeCard() {
         try {
             const bg = await loadImage(path.join(__dirname, 'reba_bg.png'));
             ctx.drawImage(bg, 0, 0, width, height);
-            ctx.fillStyle = 'rgba(8, 2, 15, 0.88)';
-            ctx.fillRect(0, 0, width, height);
         } catch (err) {
             ctx.fillStyle = '#0a0512';
             ctx.fillRect(0, 0, width, height);
         }
     }
 
-    drawGreenWatermark(ctx, width, height);
+    const now = new Date();
+    let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+    if (now.getDate() < startDate.getDate()) {
+        currentMonths--;
+    }
+    currentMonths = Math.max(0, currentMonths);
+
+    let nextMilestone = milestones.find(m => m.months > currentMonths);
+    if (!nextMilestone) nextMilestone = milestones[milestones.length - 1];
+
+    // إحداثيات شريط التقدم ليطابق مكان الخط في صورتك بدقة تامة
+    const startX = 65;
+    const endX = width - 65;
+    const progressBarY = 195; 
+    const barWidth = endX - startX;
+
+    const maxMonths = milestones[milestones.length - 1].months;
+    const progressRatio = Math.min(1, currentMonths / maxMonths);
+
+    // رسم شريط التقدم المضيء فوق الخط الخاص بالصورة
+    if (progressRatio > 0) {
+        ctx.fillStyle = '#c252ff';
+        ctx.shadowColor = '#c252ff';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.roundRect(startX, progressBarY, Math.max(14, barWidth * progressRatio), 14, 7);
+        ctx.fill();
+        ctx.shadowBlur = 0; // إلغاء الـ Shadow حتى لا يؤثر على النصوص
+    }
+
+    // طباعة الوقت الدقيق المتبقي للشارة التالية في مكانها المناسب
+    const remainingText = calculateExactNitroRemainingTime(startDate, nextMilestone.months);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 8;
+    ctx.fillText(remainingText, width / 2, 280);
+
     return canvas.toBuffer('image/png');
 }
 
@@ -139,7 +201,9 @@ client.on('messageCreate', async (message) => {
             });
         }
 
-        const imageBuffer = await generateNitroBadgeCard();
+        const startDate = (member && member.premiumSince) ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
+
+        const imageBuffer = await generateNitroBadgeCard(startDate, NITRO_MILESTONES);
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'reba-nitro.png' });
 
         return message.reply({
