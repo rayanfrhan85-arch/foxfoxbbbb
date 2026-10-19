@@ -11,7 +11,7 @@ const client = new Client({
     ]
 });
 
-const PREFIX = "-";
+const PREFIX = ""; // بدون بادئة، الاستدعاء بالحرف مباشرة (n, b, t)
 
 function calculateExactRemainingTime(startDate, targetMonths) {
     const now = new Date();
@@ -58,10 +58,16 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+    if (message.author.bot) return;
 
-    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
+    const content = message.content.trim().toLowerCase();
+    
+    // تحديد الأوامر المباشرة (n, b, t)
+    let command = "";
+    if (content === 'n' || content === 'nitro') command = 'n';
+    else if (content === 'b' || content === 'boost') command = 'b';
+    else if (content === 't' || content === 'type') command = 't';
+    else return;
 
     let member = message.member;
     let user = message.author;
@@ -73,8 +79,8 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // أمر النيترو النصي (-n / -nitro)
-    if (command === 'n' || command === 'nitro') {
+    // أمر النيترو النصي (n)
+    if (command === 'n') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
         const isCustomBanner = user.banner !== null;
@@ -108,8 +114,8 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // أمر البوست النصي (-b / -boost)
-    if (command === 'b' || command === 'boost') {
+    // أمر البوست النصي (b)
+    if (command === 'b') {
         if (!member || !member.premiumSince) {
             return message.reply({ content: `<@${message.author.id}> أنت لست مساهماً ببوست في هذا السيرفر حالياً` });
         }
@@ -129,8 +135,8 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // أمر معلومات النوع (-t / -type)
-    if (command === 't' || command === 'type') {
+    // أمر معلومات النوع (t)
+    if (command === 't') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isBoosting = member && member.premiumSince !== null;
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
