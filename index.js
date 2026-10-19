@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const path = require('path');
@@ -293,4 +294,4 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-client.login('MTU2MTYxODk5NTI5ODMwNDAwMA.GArvT1.FlLdABO5wPp1zMonhhY-5FdFz3EbQg8jupb2s0');
+client.login(process.env.TOKEN);
