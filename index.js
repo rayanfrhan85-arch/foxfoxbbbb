@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
+const { createCanvas } = require('@napi-rs/canvas');
 
 const client = new Client({
     intents: [
@@ -11,17 +12,15 @@ const client = new Client({
     ]
 });
 
-// أشهر شارات النيترو والبوست الرسمية
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت المتبقي للشارة التالية بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
-    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك 🎉";
+    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك";
 
     let yearsDiff = targetDate.getFullYear() - now.getFullYear();
     let monthsDiff = targetDate.getMonth() - now.getMonth();
@@ -46,9 +45,62 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     if (weeks > 0) parts.push(`${weeks} أسابيع`);
     if (days > 0) parts.push(`${days} أيام`);
 
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⚡";
+    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
+}
+
+// دالة لتوليد الصورة المطابقة تماماً لتصميمك
+async function generateBadgeCanvas(type, currentMonths, timeRemainingText) {
+    const canvas = createCanvas(900, 480);
+    const ctx = canvas.getContext('2d');
+
+    // خلفية سوداء فخمة
+    ctx.fillStyle = '#0a0a0c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // عنوان اللوحة في الأعلى
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 38px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(type === 'boost' ? 'اشارة البوست' : 'اشارة النيترو', canvas.width / 2, 60);
+
+    // خط التقدم (Progress Bar)
+    const barX = 80;
+    const barY = 220;
+    const barWidth = 740;
+    const barHeight = 12;
+
+    // الخط الخلفي الرمادي
+    ctx.fillStyle = '#2f3136';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barWidth, barHeight, 6);
+    ctx.fill();
+
+    // حساب نسبة التقدم بناءً على الشهور الحالية
+    const milestones = type === 'boost' ? BOOST_MILESTONES_MONTHS : NITRO_MILESTONES_MONTHS;
+    const maxMilestone = milestones[milestones.length - 1];
+    const progressPercent = Math.min(currentMonths / maxMilestone, 1);
+    const progressWidth = Math.max(20, barWidth * progressPercent);
+
+    // الخط الملون المتقدم (بنفسجي / وردي متناسق)
+    ctx.fillStyle = '#9b59b6';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, progressWidth, barHeight, 6);
+    ctx.fill();
+
+    // النصوص بالأسفل (الوقت المتبقي)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(timeRemainingText, canvas.width / 2, 330);
+
+    // حقوق البوت أو البصمة بالأسفل
+    ctx.fillStyle = '#72767d';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('DEV: FOX | REBA SERVER', canvas.width / 2, 430);
+
+    return canvas.toBuffer('image/png');
 }
 
 client.on('ready', () => {
@@ -77,10 +129,9 @@ client.on('messageCreate', async (message) => {
     // أمر البوست (b)
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            // رد بصورة عند عدم وجود شارة بوست مع منشن الشخص
+            // إذا لم يكن لديه شارة بوست يرسل له صورة أو رسالة توضح ذلك مع منشن
             return message.reply({
-                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة بوست، من وين أجبلك؟! 💎❌`,
-                files: ["https://i.imgur.com/7Q89p8b.png"] // يمكنك استبدال الرابط برابط صورة من تصميمك
+                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة بوست، من وين أجيبلك؟! 💎❌`
             });
         }
 
@@ -93,8 +144,12 @@ client.on('messageCreate', async (message) => {
         let targetMonth = BOOST_MILESTONES_MONTHS.find(m => m > currentMonths) || BOOST_MILESTONES_MONTHS[BOOST_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
+        const buffer = await generateBadgeCanvas('boost', currentMonths, timeRemaining);
+        const attachment = new AttachmentBuilder(buffer, { name: 'boost-badge.png' });
+
         return message.reply({
-            content: `<@${message.author.id}> 💎 **اشارة البوست**\n⏳ ${timeRemaining}\n🎯 **الهدف القادم:** شارة الـ ${targetMonth} أشهر\n🛠️ **DEV: FOX | REBA SERVER**`
+            content: `<@${message.author.id}>`,
+            files: [attachment]
         });
     }
 
@@ -113,10 +168,9 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            // رد بصورة عند عدم وجود شارة نيترو مع منشن الشخص
+            // إذا لم يكن لديه شارة نيترو يرسل له رسالة مع منشن
             return message.reply({
-                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة نيترو، شتريد أجبلك؟! ✨❌`,
-                files: ["https://i.imgur.com/7Q89p8b.png"] // يمكنك استبدال الرابط برابط صورة من تصميمك
+                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة نيترو، شتريد أجبلك؟! ✨❌`
             });
         }
 
@@ -130,8 +184,12 @@ client.on('messageCreate', async (message) => {
         let targetMonth = NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
+        const buffer = await generateBadgeCanvas('nitro', currentMonths, timeRemaining);
+        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-badge.png' });
+
         return message.reply({
-            content: `<@${message.author.id}> 🌟 **اشارة النيترو**\n⏳ ${timeRemaining}\n🎯 **الهدف القادم:** شارة الـ ${targetMonth} شهر\n🛠️ **DEV: FOX | REBA SERVER**`
+            content: `<@${message.author.id}>`,
+            files: [attachment]
         });
     }
 });
