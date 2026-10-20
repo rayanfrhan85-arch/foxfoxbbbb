@@ -13,7 +13,7 @@ const client = new Client({
     ]
 });
 
-// شارات النيترو الرسمية مع مسمياتها
+// شارات النيترو الرسمية (بالشهور ومسمياتها)
 const NITRO_MILESTONES = [
     { months: 0, name: "بدون شارة" },
     { months: 1, name: "Bronze (شهر واحد)" },
@@ -26,7 +26,7 @@ const NITRO_MILESTONES = [
     { months: 72, name: "Opal (6+ سنوات)" }
 ];
 
-// شارات البوست الرسمية مع مسمياتها
+// شارات البوست الرسمية (بالشهور ومسمياتها)
 const BOOST_MILESTONES = [
     { months: 0, name: "بدون شارة" },
     { months: 1, name: "الشارة الأولى (شهر)" },
@@ -40,7 +40,7 @@ const BOOST_MILESTONES = [
     { months: 24, name: "الشارة التاسعة (سنتين)" }
 ];
 
-// دالة حساب الشارات والوقت والنسبة بدقة
+// دالة حساب الشارات والوقت والنسبة بدقة فائقة
 function calculateMilestoneDetails(startDate, milestonesList) {
     const now = new Date();
     
@@ -150,12 +150,19 @@ client.on('messageCreate', async (message) => {
         if (!member || !member.premiumSince) {
             const bgPath = path.join(__dirname, 'no-boost.png');
             const attachment = new AttachmentBuilder(bgPath, { name: 'no-boost.png' });
-            return message.reply({ content: `<@${message.author.id}>\n❌ **الحالية:** بدون شارة بوست\n❌ **التالية:** الشارة الأولى (شهر واحد)`, files: [attachment] });
+            return message.reply({ 
+                content: `<@${message.author.id}>\n` +
+                         `📍 **الشارة الحالية:** \`بدون شارة\` (0 شهر)\n` +
+                         `🎯 **الشارة التالية:** \`الشارة الأولى (شهر)\`\n` +
+                         `📊 **نسبة التقدم:** \`0%\`\n` +
+                         `⏱️ **الوقت المتبقي:** غير متوفر`,
+                files: [attachment] 
+            });
         }
 
         const startDate = new Date(member.premiumSince);
         const data = calculateMilestoneDetails(startDate, BOOST_MILESTONES);
-        const bgPath = path.join(__dirname, 'boost-bg.png');
+        const bgPath = path.join(__dirname, 'boost-bg.png'); // صورة البوست الفخمة الخاصة بك
         const attachment = new AttachmentBuilder(bgPath, { name: 'boost-bg.png' });
 
         return message.reply({
@@ -185,12 +192,19 @@ client.on('messageCreate', async (message) => {
         if (!hasNitro) {
             const bgPath = path.join(__dirname, 'no-nitro.png');
             const attachment = new AttachmentBuilder(bgPath, { name: 'no-nitro.png' });
-            return message.reply({ content: `<@${message.author.id}>\n❌ **الحالية:** بدون شارة نيترو\n❌ **التالية:** Bronze (شهر واحد)`, files: [attachment] });
+            return message.reply({ 
+                content: `<@${message.author.id}>\n` +
+                         `📍 **الشارة الحالية:** \`بدون شارة\` (0 شهر)\n` +
+                         `🎯 **الشارة التالية:** \`Bronze (شهر واحد)\`\n` +
+                         `📊 **نسبة التقدم:** \`0%\`\n` +
+                         `⏱️ **الوقت المتبقي:** غير متوفر`,
+                files: [attachment] 
+            });
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         const data = calculateMilestoneDetails(startDate, NITRO_MILESTONES);
-        const bgPath = path.join(__dirname, 'nitro-bg.png');
+        const bgPath = path.join(__dirname, 'nitro-bg.png'); // صورة النيترو الفخمة الخاصة بك
         const attachment = new AttachmentBuilder(bgPath, { name: 'nitro-bg.png' });
 
         return message.reply({
