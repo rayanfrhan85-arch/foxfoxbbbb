@@ -18,6 +18,14 @@ const client = new Client({
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
+// ==========================================================
+// ⚙️ الإعدادات اليدوية:
+// 1. تاريخ بداية النيترو الخاص بك (لتشغيل أمر n بدقة)
+// 2. تاريخ انتهاء اشتراك النيترو الحالي (لتشغيل أمر t)
+// ==========================================================
+const MANUAL_NITRO_START = new Date('2024-01-15T00:00:00Z'); // ضع تاريخ بداية النيترو هنا
+const NITRO_EXPIRE_DATE = new Date('2026-12-31T23:59:59Z');  // ضع تاريخ انتهاء النيترو هنا
+
 // دالة حساب الوقت المتبقي للشارة القادمة بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
@@ -51,6 +59,60 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⚡";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
+}
+
+// حساب الوقت المتبقي لانتهاء اشتراك النيترو (أمر t)
+function getNitroExpiryRemainingTime(expireDate) {
+    const now = new Date();
+    const totalMs = expireDate.getTime() - now.getTime();
+
+    if (totalMs <= 0) return "انتهى اشتراك النيترو بالفعل!  انتهت صلاحيته.";
+
+    let totalDays = Math.floor(totalMs / (1000 * 60 * 60 * 24));
+    let months = Math.floor(totalDays / 30);
+    let days = totalDays % 30;
+    let hours = Math.floor((totalMs / (1000 * 60 * 60)) % 24);
+
+    let parts = [];
+    if (months > 0) parts.push(`${months} شهر`);
+    if (days > 0) parts.push(`${days} يوم`);
+    if (hours > 0) parts.push(`${hours} ساعة`);
+
+    return parts.join(' و ');
+}
+
+// حساب نسبة التقدم بين الشارة الحالية والشارة القادمة
+function calculateStepProgress(startDate, milestones) {
+    const now = new Date();
+    let prevMonths = 0;
+    let targetMonth = milestones[0];
+
+    for (let i = 0; i < milestones.length; i++) {
+        let milestoneDate = new Date(startDate.getTime());
+        milestoneDate.setMonth(milestoneDate.getMonth() + milestones[i]);
+
+        if (now >= milestoneDate) {
+            prevMonths = milestones[i];
+            targetMonth = milestones[i + 1] || milestones[i];
+        } else {
+            targetMonth = milestones[i];
+            break;
+        }
+    }
+
+    let prevDate = new Date(startDate.getTime());
+    prevDate.setMonth(prevDate.getMonth() + prevMonths);
+
+    let targetDate = new Date(startDate.getTime());
+    targetDate.setMonth(targetDate.getMonth() + targetMonth);
+
+    let totalDuration = targetDate.getTime() - prevDate.getTime();
+    let elapsed = now.getTime() - prevDate.getTime();
+
+    if (totalDuration <= 0) return { progress: 1, targetMonth };
+
+    let progress = Math.max(0, Math.min(1, elapsed / totalDuration));
+    return { progress, targetMonth };
 }
 
 // دالة رسم الخط البنفسجي والوقت فوق الصورة الموجودة
@@ -129,9 +191,9 @@ client.on('messageCreate', async (message) => {
     let command = "";
     if (content === 'n' || content === 'nitro' || content === '-n') command = 'n';
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
+    else if (content === 't' || content === 'time' || content === '-t') command = 't';
     else return;
 
-    // سرعة الاستجابة الفورية
     await message.channel.sendTyping().catch(() => {});
 
     let member = message.member;
@@ -153,16 +215,9 @@ client.on('messageCreate', async (message) => {
         }
 
         const startDate = new Date(member.premiumSince);
-        let now = new Date();
-        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-        if (now.getDate() < startDate.getDate()) currentMonths--;
-        currentMonths = Math.max(0, currentMonths);
-
-        let targetMonth = BOOST_MILESTONES_MONTHS.find(m => m > currentMonths) || BOOST_MILESTONES_MONTHS[BOOST_MILESTONES_MONTHS.length - 1];
+        const { progress, targetMonth } = calculateStepProgress(startDate, BOOST_MILESTONES_MONTHS);
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
-        let progress = currentMonths / targetMonth;
 
-        // يستعمل boost-bg.png الموجودة في قائمتك الحالية
         const buffer = await renderCustomCard('boost-bg.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
 
@@ -189,21 +244,20 @@ client.on('messageCreate', async (message) => {
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
-        let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        let now = new Date();
-        let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
-        if (now.getDate() < startDate.getDate()) currentMonths--;
-        currentMonths = Math.max(0, currentMonths);
-
-        let targetMonth = NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1];
+        const startDate = MANUAL_NITRO_START;
+        const { progress, targetMonth } = calculateStepProgress(startDate, NITRO_MILESTONES_MONTHS);
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
-        let progress = currentMonths / targetMonth;
 
-        // يستعمل no_nitro_bg.png للنيترو أو يمكنك تغييرها لاسم الصورة التي تريدها
         const buffer = await renderCustomCard('no_nitro_bg.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
 
         return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
+    }
+
+    // --- أمر الوقت المتبقي لانتهاء اشتراك النيترو (t) ---
+    if (command === 't') {
+        let timeRemaining = getNitroExpiryRemainingTime(NITRO_EXPIRE_DATE);
+        return message.reply(`<@${message.author.id}> ⏳ الوقت المتبقي لانتهاء اشتراك النيترو الخاص بك هو: **${timeRemaining}**`);
     }
 });
 
