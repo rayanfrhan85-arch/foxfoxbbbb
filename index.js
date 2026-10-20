@@ -21,6 +21,7 @@ const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 function getProgressAndRemainingTime(startDate, milestones) {
     const now = new Date();
     
+    // حساب إجمالي الشهور منذ تاريخ البداية
     let yearsDiff = now.getFullYear() - startDate.getFullYear();
     let monthsDiff = now.getMonth() - startDate.getMonth();
     let currentTotalMonths = yearsDiff * 12 + monthsDiff;
@@ -30,6 +31,7 @@ function getProgressAndRemainingTime(startDate, milestones) {
     }
     currentTotalMonths = Math.max(0, currentTotalMonths);
 
+    // تحديد الشارة السابقة والشارة المستهدفة القادمة
     let prevMilestone = 0;
     let targetMilestone = milestones[milestones.length - 1];
 
@@ -41,28 +43,25 @@ function getProgressAndRemainingTime(startDate, milestones) {
         }
     }
 
+    // تاريخ الوصول للشارة المستهدفة
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMilestone);
 
+    // حساب نسبة الشريط البنفسجي بين الشارة السابقة والمستهدفة
     let progress = 1;
+    let totalRange = targetMilestone - prevMilestone;
+    let currentRange = currentTotalMonths - prevMilestone;
+    
     if (targetDate > now) {
-        let totalRange = targetMilestone - prevMilestone;
-        let currentRange = currentTotalMonths - prevMilestone;
-        
-        let lastMonthDate = new Date(now.getFullYear(), now.getMonth(), startDate.getDate());
-        if (lastMonthDate > now) {
-            lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-        }
-        let nextMonthDate = new Date(lastMonthDate.getTime());
-        nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+        let lastMilestoneDate = new Date(startDate.getTime());
+        lastMilestoneDate.setMonth(lastMilestoneDate.getMonth() + prevMilestone);
 
-        let monthDays = (nextMonthDate - lastMonthDate) / (1000 * 60 * 60 * 24);
-        let currentDays = (now - lastMonthDate) / (1000 * 60 * 60 * 24);
-        let dayFraction = currentDays / monthDays;
-
-        progress = Math.min(1, Math.max(0, (currentRange + dayFraction) / totalRange));
+        let totalMs = targetDate.getTime() - lastMilestoneDate.getTime();
+        let elapsedMs = now.getTime() - lastMilestoneDate.getTime();
+        progress = Math.min(1, Math.max(0, elapsedMs / totalMs));
     }
 
+    // حساب الوقت المتبقي الفعلي بدقة للشارة القادمة
     let remainingMs = targetDate.getTime() - now.getTime();
     if (remainingMs <= 0) {
         return {
@@ -134,7 +133,7 @@ async function renderCustomCard(bgFileName, timeData) {
     ctx.fillText(percentText, barX + maxBarWidth, barY - 10);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px sans-serif';
+    ctx.font = 'bold 34px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(timeData.timeText, canvas.width / 2, canvas.height * 0.75);
 
