@@ -53,7 +53,7 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة رسم الشارات والوقت فوق الصورة
+// دالة رسم الشارات والوقت (حسب تصميمك الأصلي)
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -62,6 +62,10 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#0f111a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
 
@@ -93,20 +97,29 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     return canvas.toBuffer('image/png');
 }
 
-// دالة إرسال صورة "عدم وجود شارة" كما صممتها تماماً وبدون أي تعديلات برمجية عليها
+// دالة إرسال صورة "عدم وجود شارة" كما صممتها تماماً وبدون أي تعديل عليها
 async function renderNoBadgeCard(bgFileName) {
     const bgPath = path.join(__dirname, bgFileName);
+    
     if (!fs.existsSync(bgPath)) {
         const canvas = createCanvas(850, 420);
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#0f111a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
+
     const bgImage = await loadImage(bgPath);
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
+
+    // ترسم صورتك الأصلية بالكامل كما صممتها تماماً
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+
     return canvas.toBuffer('image/png');
 }
 
@@ -123,11 +136,15 @@ client.on('messageCreate', async (message) => {
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
     else return;
 
-    // إرسال جاري الكتابة (sendTyping) فوراً لتسريع الاستجابة
-    message.channel.sendTyping().catch(() => {});
+    let member = message.member;
+    let user = message.author;
 
-    const member = message.member;
-    const user = message.author;
+    try {
+        user = await client.users.fetch(message.author.id, { force: true });
+        if (message.guild) {
+            member = await message.guild.members.fetch({ user: message.author.id, force: true });
+        }
+    } catch (e) {}
 
     // --- أمر البوست (b) ---
     if (command === 'b') {
