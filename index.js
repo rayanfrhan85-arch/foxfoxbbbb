@@ -14,11 +14,10 @@ const client = new Client({
     ]
 });
 
-// شارات النيترو والبوست الرسمية بالضبط حسب ديسكورد (بالشهور)
+// شارات النيترو والبوست الرسمية بالشهور حسب ديسكورد
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت المتبقي والحسابات الدقيقة للتقدم
 function getProgressAndRemainingTime(startDate, milestones) {
     const now = new Date();
     
@@ -31,7 +30,6 @@ function getProgressAndRemainingTime(startDate, milestones) {
     }
     currentTotalMonths = Math.max(0, currentTotalMonths);
 
-    // تحديد الشارة السابقة والمستهدفة
     let prevMilestone = 0;
     let targetMilestone = milestones[milestones.length - 1];
 
@@ -43,11 +41,9 @@ function getProgressAndRemainingTime(startDate, milestones) {
         }
     }
 
-    // حساب موعد الشارة القادمة
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMilestone);
 
-    // حساب نسبة تقدم الشريط بين الشارة السابقة والقادمة
     let progress = 1;
     if (targetDate > now) {
         let totalRange = targetMilestone - prevMilestone;
@@ -98,7 +94,6 @@ function getProgressAndRemainingTime(startDate, milestones) {
     };
 }
 
-// دالة رسم الخط البنفسجي والأرقام والوقت
 async function renderCustomCard(bgFileName, timeData) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -127,20 +122,17 @@ async function renderCustomCard(bgFileName, timeData) {
 
     const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * timeData.progress));
 
-    // رسم الشريط البنفسجي
     ctx.fillStyle = '#a855f7';
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 8);
     ctx.fill();
 
-    // نسبة الشارة الحالية فوق الشريط
     const percentText = `${Math.floor(timeData.progress * 100)}% (${timeData.currentMonths} / ${timeData.targetMilestone} شهر)`;
     ctx.fillStyle = '#e9d5ff';
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(percentText, barX + maxBarWidth, barY - 10);
 
-    // النص الأسفل للوقت المتبقي
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
@@ -193,7 +185,6 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
             const buffer = await renderNoBadgeCard('no-boost.png');
@@ -210,7 +201,6 @@ client.on('messageCreate', async (message) => {
         return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
     }
 
-    // --- أمر النيترو (n) ---
     if (command === 'n') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
@@ -218,4 +208,26 @@ client.on('messageCreate', async (message) => {
         const avatarDecoration = user.avatarDecoration;
         const isBoosting = member && member.premiumSince !== null;
 
-        const hasNitro = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro
+        const hasNitro = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
+                         isAnimatedAvatar || 
+                         isCustomBanner || 
+                         avatarDecoration || 
+                         isBoosting;
+
+        if (!hasNitro) {
+            const buffer = await renderNoBadgeCard('no-nitro.png');
+            const attachment = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
+            return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
+        }
+
+        let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
+        const timeData = getProgressAndRemainingTime(startDate, NITRO_MILESTONES_MONTHS);
+
+        const buffer = await renderCustomCard('no_nitro_bg.png', timeData);
+        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
+
+        return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
+    }
+});
+
+client.login(process.env.TOKEN);
