@@ -77,7 +77,11 @@ client.on('messageCreate', async (message) => {
     // أمر البوست (b)
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            return message.reply({ content: `<@${message.author.id}> ليس لديك شارة بوست 💎` });
+            // رد بصورة عند عدم وجود شارة بوست مع منشن الشخص
+            return message.reply({
+                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة بوست، من وين أجبلك؟! 💎❌`,
+                files: ["https://i.imgur.com/7Q89p8b.png"] // يمكنك استبدال الرابط برابط صورة من تصميمك
+            });
         }
 
         const startDate = new Date(member.premiumSince);
@@ -96,6 +100,26 @@ client.on('messageCreate', async (message) => {
 
     // أمر النيترو (n)
     if (command === 'n') {
+        const userFlags = user.flags ? user.flags.toArray() : [];
+        const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
+        const isCustomBanner = user.banner !== null;
+        const avatarDecoration = user.avatarDecoration;
+        const isBoosting = member && member.premiumSince !== null;
+
+        const hasNitro = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
+                         isAnimatedAvatar || 
+                         isCustomBanner || 
+                         avatarDecoration || 
+                         isBoosting;
+
+        if (!hasNitro) {
+            // رد بصورة عند عدم وجود شارة نيترو مع منشن الشخص
+            return message.reply({
+                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة نيترو، شتريد أجبلك؟! ✨❌`,
+                files: ["https://i.imgur.com/7Q89p8b.png"] // يمكنك استبدال الرابط برابط صورة من تصميمك
+            });
+        }
+
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         
         let now = new Date();
