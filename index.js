@@ -136,6 +136,9 @@ client.on('messageCreate', async (message) => {
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
     else return;
 
+    // إرسال حالة "جاري الكتابة..." فوراً لسرعة الاستجابة
+    await message.channel.sendTyping().catch(() => {});
+
     let member = message.member;
     let user = message.author;
 
