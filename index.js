@@ -1,6 +1,5 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
@@ -18,10 +17,9 @@ const client = new Client({
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-function getProgressAndRemainingTime(startDate, milestones) {
+function getExactProgressData(startDate, milestones) {
     const now = new Date();
     
-    // حساب إجمالي الشهور منذ تاريخ البداية
     let yearsDiff = now.getFullYear() - startDate.getFullYear();
     let monthsDiff = now.getMonth() - startDate.getMonth();
     let currentTotalMonths = yearsDiff * 12 + monthsDiff;
@@ -31,42 +29,44 @@ function getProgressAndRemainingTime(startDate, milestones) {
     }
     currentTotalMonths = Math.max(0, currentTotalMonths);
 
-    // تحديد الشارة السابقة والشارة المستهدفة القادمة
-    let prevMilestone = 0;
     let targetMilestone = milestones[milestones.length - 1];
+    let prevMilestone = 0;
 
     for (let i = 0; i < milestones.length; i++) {
         if (milestones[i] > currentTotalMonths) {
             targetMilestone = milestones[i];
-            prevMilestone = i > 0 ? milestones[i - 1] : 0;
+            prevMilestone = (i > 0) ? milestones[i - 1] : 0;
             break;
         }
     }
 
-    // تاريخ الوصول للشارة المستهدفة
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMilestone);
 
-    // حساب نسبة الشريط البنفسجي بين الشارة السابقة والمستهدفة
     let progress = 1;
-    let totalRange = targetMilestone - prevMilestone;
-    let currentRange = currentTotalMonths - prevMilestone;
-    
     if (targetDate > now) {
-        let lastMilestoneDate = new Date(startDate.getTime());
-        lastMilestoneDate.setMonth(lastMilestoneDate.getMonth() + prevMilestone);
+        let lastMonthDate = new Date(now.getFullYear(), now.getMonth(), startDate.getDate());
+        if (lastMonthDate > now) {
+            lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+        }
+        let nextMonthDate = new Date(lastMonthDate.getTime());
+        nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
 
-        let totalMs = targetDate.getTime() - lastMilestoneDate.getTime();
-        let elapsedMs = now.getTime() - lastMilestoneDate.getTime();
-        progress = Math.min(1, Math.max(0, elapsedMs / totalMs));
+        let monthDays = (nextMonthDate - lastMonthDate) / (1000 * 60 * 60 * 24);
+        let currentDays = (now - lastMonthDate) / (1000 * 60 * 60 * 24);
+        let dayFraction = currentDays / monthDays;
+
+        let totalRange = targetMilestone - prevMilestone;
+        let currentRange = currentTotalMonths - prevMilestone;
+
+        progress = Math.min(1, Math.max(0, (currentRange + dayFraction) / totalRange));
     }
 
-    // حساب الوقت المتبقي الفعلي بدقة للشارة القادمة
     let remainingMs = targetDate.getTime() - now.getTime();
     if (remainingMs <= 0) {
         return {
             timeText: "وصلت لنهاية المطاف عاشت ايدك 🎉",
-            progress: 1,
+            progressPercent: 100,
             currentMonths: currentTotalMonths,
             targetMilestone
         };
@@ -83,80 +83,14 @@ function getProgressAndRemainingTime(startDate, milestones) {
     if (weeksLeft > 0) parts.push(`${weeksLeft} أسابيع`);
     if (daysLeft > 0) parts.push(`${daysLeft} أيام`);
 
-    let timeText = parts.length > 0 ? `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}` : "سوف تصل الى الشارة التالية قريباً جداً ⚡";
+    let timeText = parts.length > 0 ? `سوف تصل الى الشارة التالية بعد **${parts.join(' و ')}**` : "سوف تصل الى الشارة التالية قريباً جداً ⚡";
 
     return {
         timeText,
-        progress,
+        progressPercent: Math.floor(progress * 100),
         currentMonths: currentTotalMonths,
         targetMilestone
     };
-}
-
-async function renderCustomCard(bgFileName, timeData) {
-    const bgPath = path.join(__dirname, bgFileName);
-    
-    if (!fs.existsSync(bgPath)) {
-        const canvas = createCanvas(850, 420);
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#0f111a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
-        return canvas.toBuffer('image/png');
-    }
-
-    const bgImage = await loadImage(bgPath);
-    const canvas = createCanvas(bgImage.width, bgImage.height);
-    const ctx = canvas.getContext('2d');
-
-    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-
-    const barX = canvas.width * 0.1;
-    const barY = canvas.height * 0.52;
-    const maxBarWidth = canvas.width * 0.8;
-    const barHeight = 16;
-
-    const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * timeData.progress));
-
-    ctx.fillStyle = '#a855f7';
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, currentBarWidth, barHeight, 8);
-    ctx.fill();
-
-    const percentText = `${Math.floor(timeData.progress * 100)}% (${timeData.currentMonths} / ${timeData.targetMilestone} شهر)`;
-    ctx.fillStyle = '#e9d5ff';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(percentText, barX + maxBarWidth, barY - 10);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(timeData.timeText, canvas.width / 2, canvas.height * 0.75);
-
-    return canvas.toBuffer('image/png');
-}
-
-async function renderNoBadgeCard(bgFileName) {
-    const bgPath = path.join(__dirname, bgFileName);
-    if (!fs.existsSync(bgPath)) {
-        const canvas = createCanvas(850, 420);
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#0f111a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        return canvas.toBuffer('image/png');
-    }
-
-    const bgImage = await loadImage(bgPath);
-    const canvas = createCanvas(bgImage.width, bgImage.height);
-    const ctx = canvas.getContext('2d');
-
-    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-
-    return canvas.toBuffer('image/png');
 }
 
 client.on('ready', () => {
@@ -172,6 +106,7 @@ client.on('messageCreate', async (message) => {
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
     else return;
 
+    // استجابة فورية
     await message.channel.sendTyping().catch(() => {});
 
     let member = message.member;
@@ -184,22 +119,26 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
+    // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            const buffer = await renderNoBadgeCard('no-boost.png');
-            const attachment = new AttachmentBuilder(buffer, { name: 'no-boost.png' });
+            const bgPath = path.join(__dirname, 'no-boost.png');
+            const attachment = new AttachmentBuilder(bgPath, { name: 'no-boost.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
         const startDate = new Date(member.premiumSince);
-        const timeData = getProgressAndRemainingTime(startDate, BOOST_MILESTONES_MONTHS);
+        const timeData = getExactProgressData(startDate, BOOST_MILESTONES_MONTHS);
+        const bgPath = path.join(__dirname, 'boost-bg.png');
+        const attachment = new AttachmentBuilder(bgPath, { name: 'boost-bg.png' });
 
-        const buffer = await renderCustomCard('boost-bg.png', timeData);
-        const attachment = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
-
-        return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
+        return message.reply({
+            content: `<@${message.author.id}>\n⏱️ ${timeData.timeText}\n📊 **نسبة التقدم:** \`${timeData.progressPercent}%\` (${timeData.currentMonths} / ${timeData.targetMilestone} شهر)`,
+            files: [attachment]
+        });
     }
 
+    // --- أمر النيترو (n) ---
     if (command === 'n') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
@@ -214,18 +153,20 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            const buffer = await renderNoBadgeCard('no-nitro.png');
-            const attachment = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
+            const bgPath = path.join(__dirname, 'no-nitro.png');
+            const attachment = new AttachmentBuilder(bgPath, { name: 'no-nitro.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        const timeData = getProgressAndRemainingTime(startDate, NITRO_MILESTONES_MONTHS);
+        const timeData = getExactProgressData(startDate, NITRO_MILESTONES_MONTHS);
+        const bgPath = path.join(__dirname, 'nitro-bg.png');
+        const attachment = new AttachmentBuilder(bgPath, { name: 'nitro-bg.png' });
 
-        const buffer = await renderCustomCard('no_nitro_bg.png', timeData);
-        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
-
-        return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
+        return message.reply({
+            content: `<@${message.author.id}>\n⏱️ ${timeData.timeText}\n📊 **نسبة التقدم:** \`${timeData.progressPercent}%\` (${timeData.currentMonths} / ${timeData.targetMilestone} شهر)`,
+            files: [attachment]
+        });
     }
 });
 
