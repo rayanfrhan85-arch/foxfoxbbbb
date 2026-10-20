@@ -13,11 +13,11 @@ const client = new Client({
     ]
 });
 
-// أشهر شارات النيترو والبوست الرسمية (بالشهور)
+// شارات النيترو والبوست (بالشهور)
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت المتبقي للشارة التالية بدقة
+// دالة حساب الوقت المتبقي للشارة القادمة بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
@@ -53,7 +53,7 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة رسم الخط البنفسجي والوقت فوق الصورة التي صممتها
+// دالة دمج الصورة ورسم الخط البنفسجي مع النص الدقيق
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, 'assets', bgFileName);
     const bgImage = await loadImage(bgPath);
@@ -61,11 +61,10 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
-    // رسم صورة الخلفية التي صممتها أنت
+    // رسم الصورة المصممة
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // --- رسم الخط البنفسجي المتزايد حسب نسبة الوقت ---
-    // يمكنك تعديل إحداثيات موقع الخط (BarX, BarY) لتنطبق على تصميمك بالضبط
+    // رسم الخط البنفسجي المتزايد
     const barX = canvas.width * 0.1;
     const barY = canvas.height * 0.52;
     const maxBarWidth = canvas.width * 0.8;
@@ -73,13 +72,12 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
 
     const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * progressPercent));
 
-    // رسم التوهج والخط البنفسجي
-    ctx.fillStyle = '#a855f7'; // لون بنفسجي فخم
+    ctx.fillStyle = '#a855f7'; // خط بنفسجي فخم
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // --- كتابة النص الدقيق للوقت بالأسفل ---
+    // كتابة الوقت المتبقي داخل الصورة
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
@@ -89,7 +87,7 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
 }
 
 client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag} | Developed by FOX`);
+    console.log(`Logged in as ${client.user.tag} | DEV: FOX`);
 });
 
 client.on('messageCreate', async (message) => {
