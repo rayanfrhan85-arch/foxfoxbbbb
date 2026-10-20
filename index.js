@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const path = require('path');
+const fs = require('fs');
 
 const client = new Client({
     intents: [
@@ -13,7 +14,7 @@ const client = new Client({
     ]
 });
 
-// شارات النيترو والبوست (بالشهور)
+// شارات النيترو والبوست الرسمية (بالشهور)
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
@@ -41,30 +42,42 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     let remainingMs = targetDate.getTime() - tempDate.getTime();
     let totalDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
     let weeks = Math.floor(totalDays / 7);
-    let days = totalDays % 7;
 
     let parts = [];
     if (totalMonths > 0) parts.push(`${totalMonths} شهر`);
     if (weeks > 0) parts.push(`${weeks} أسابيع`);
-    if (days > 0) parts.push(`${days} أيام`);
+    if (totalDays % 7 > 0) parts.push(`${totalDays % 7} أيام`);
 
     if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⚡";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة دمج الصورة ورسم الخط البنفسجي مع النص الدقيق
+// دالة رسم الصورة والخط البنفسجي والوقت فوق الصورة الموجودة بالملف الرئيسي
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
-    const bgPath = path.join(__dirname, 'assets', bgFileName);
-    const bgImage = await loadImage(bgPath);
+    const bgPath = path.join(__dirname, bgFileName);
+    
+    // إذا لم تكن الصورة موجودة، نرجع صورة فارغة لمنع أي خطأ
+    if (!fs.existsSync(bgPath)) {
+        const canvas = createCanvas(850, 420);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0f111a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("الصورة غير موجودة في المستودع!", canvas.width / 2, canvas.height / 2);
+        return canvas.toBuffer('image/png');
+    }
 
+    const bgImage = await loadImage(bgPath);
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
-    // رسم الصورة المصممة
+    // رسم صورتك المصممة بالخلفية
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // رسم الخط البنفسجي المتزايد
+    // --- رسم الخط البنفسجي المتزايد حسب نسبة الوقت ---
     const barX = canvas.width * 0.1;
     const barY = canvas.height * 0.52;
     const maxBarWidth = canvas.width * 0.8;
@@ -72,12 +85,12 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
 
     const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * progressPercent));
 
-    ctx.fillStyle = '#a855f7'; // خط بنفسجي فخم
+    ctx.fillStyle = '#a855f7'; // لون الخط البنفسجي الفخم
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // كتابة الوقت المتبقي داخل الصورة
+    // --- كتابة الوقت الدقيق المتبقي بالأسفل ---
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
@@ -112,7 +125,8 @@ client.on('messageCreate', async (message) => {
     // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            const noBoostPath = path.join(__dirname, 'assets', 'no-boost.png');
+            // يرسل صورة no-boost.png الموجودة في القائمة عندك
+            const noBoostPath = path.join(__dirname, 'no-boost.png');
             const attachment = new AttachmentBuilder(noBoostPath);
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
@@ -127,7 +141,8 @@ client.on('messageCreate', async (message) => {
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
         let progress = currentMonths / targetMonth;
 
-        const buffer = await renderCustomCard('boost-bg.png', timeRemaining, progress);
+        // يستعمل صورة boost.png كمطابق لملفاتك
+        const buffer = await renderCustomCard('boost.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
 
         return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
@@ -148,7 +163,8 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            const noNitroPath = path.join(__dirname, 'assets', 'no-nitro.png');
+            // يرسل صورة no-nitro.png الموجودة في القائمة عندك
+            const noNitroPath = path.join(__dirname, 'no-nitro.png');
             const attachment = new AttachmentBuilder(noNitroPath);
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
@@ -163,7 +179,8 @@ client.on('messageCreate', async (message) => {
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
         let progress = currentMonths / targetMonth;
 
-        const buffer = await renderCustomCard('nitro-bg.png', timeRemaining, progress);
+        // يستعمل صورة nitro.png كمطابق لملفاتك
+        const buffer = await renderCustomCard('nitro.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
 
         return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
