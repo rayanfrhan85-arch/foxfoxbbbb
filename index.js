@@ -23,8 +23,8 @@ const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 // 1. تاريخ بداية النيترو الخاص بك (لتشغيل أمر n بدقة)
 // 2. تاريخ انتهاء اشتراك النيترو الحالي (لتشغيل أمر t)
 // ==========================================================
-const MANUAL_NITRO_START = new Date('2024-01-15T00:00:00Z'); // ضع تاريخ بداية النيترو هنا
-const NITRO_EXPIRE_DATE = new Date('2026-12-31T23:59:59Z');  // ضع تاريخ انتهاء النيترو هنا
+const MANUAL_NITRO_START = new Date('2024-01-15T00:00:00Z'); 
+const NITRO_EXPIRE_DATE = new Date('2026-12-31T23:59:59Z');  
 
 // دالة حساب الوقت المتبقي للشارة القادمة بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
@@ -66,7 +66,7 @@ function getNitroExpiryRemainingTime(expireDate) {
     const now = new Date();
     const totalMs = expireDate.getTime() - now.getTime();
 
-    if (totalMs <= 0) return "انتهى اشتراك النيترو بالفعل!  انتهت صلاحيته.";
+    if (totalMs <= 0) return "انتهى اشتراك النيترو بالفعل!";
 
     let totalDays = Math.floor(totalMs / (1000 * 60 * 60 * 24));
     let months = Math.floor(totalDays / 30);
@@ -115,7 +115,7 @@ function calculateStepProgress(startDate, milestones) {
     return { progress, targetMonth };
 }
 
-// دالة رسم الخط البنفسجي والوقت فوق الصورة الموجودة
+// 🎨 ترتيب مكان النص وشريط التقدم بدقة داخل الصورة
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -127,7 +127,7 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("الصورة غير موجودة في المستودع!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
 
@@ -135,24 +135,26 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
+    // رسم الخلفية الأصلية
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // الخط البنفسجي للتقدم
-    const barX = canvas.width * 0.1;
-    const barY = canvas.height * 0.52;
-    const maxBarWidth = canvas.width * 0.8;
-    const barHeight = 14;
+    // 📍 إحداثيات شريط التقدم (مكان مرتب ومنتصف الصورة تماماً)
+    const barX = canvas.width * 0.1;       // يبدأ من 10% من عرض الصورة
+    const barY = canvas.height * 0.52;     // في منتصف الارتفاع تقريباً
+    const maxBarWidth = canvas.width * 0.8;// عرض الشريط 80% من الكارد
+    const barHeight = 14;                  // سمك الشريط
 
     const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * progressPercent));
 
-    ctx.fillStyle = '#a855f7';
+    // رسم خلفية الشريط (اختياري، لون خفيف) أو رسم شريط التقدم البنفسجي مباشرة
+    ctx.fillStyle = '#a855f7'; // لون بنفسجي مميز
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // الوقت الدقيق المتبقي
+    // 📍 إحداثيات مكان النص (تحت شريط التقدم بمسافة مناسبة ومرتبة)
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px sans-serif';
+    ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(timeText, canvas.width / 2, canvas.height * 0.72);
 
@@ -248,7 +250,8 @@ client.on('messageCreate', async (message) => {
         const { progress, targetMonth } = calculateStepProgress(startDate, NITRO_MILESTONES_MONTHS);
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
-        const buffer = await renderCustomCard('no_nitro_bg.png', timeRemaining, progress);
+        // تم ربطها بالصورة الصحيحة المتاحة في مستودعك: nitro-bg.png
+        const buffer = await renderCustomCard('nitro-bg.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
 
         return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
