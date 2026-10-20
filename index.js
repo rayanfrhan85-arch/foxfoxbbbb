@@ -14,7 +14,7 @@ const client = new Client({
     ]
 });
 
-// شارات النيترو والبوست الرسمية بالشهور حسب ديسكورد
+// شارات النيترو والبوست الرسمية (كل واحدة مستقلة لوحدها)
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
@@ -22,7 +22,6 @@ const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 function calculateExactMilestoneData(startDate, milestones) {
     const now = new Date();
     
-    // حساب الفرق الإجمالي بالشهور والدقائق
     let yearsDiff = now.getFullYear() - startDate.getFullYear();
     let monthsDiff = now.getMonth() - startDate.getMonth();
     let currentTotalMonths = yearsDiff * 12 + monthsDiff;
@@ -43,15 +42,12 @@ function calculateExactMilestoneData(startDate, milestones) {
         }
     }
 
-    // التاريخ الفعلي للوصول للشارة المستهدفة
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMilestone);
 
-    // التاريخ الفعلي للشارة السابقة
     const lastMilestoneDate = new Date(startDate.getTime());
     lastMilestoneDate.setMonth(lastMilestoneDate.getMonth() + prevMilestone);
 
-    // حساب نسبة تقدم الشريط بكسورها الدقيقة (بدقة الميللي ثانية)
     let progress = 1;
     if (targetDate > now) {
         let totalSpan = targetDate.getTime() - lastMilestoneDate.getTime();
@@ -59,7 +55,6 @@ function calculateExactMilestoneData(startDate, milestones) {
         progress = Math.min(1, Math.max(0, currentSpan / totalSpan));
     }
 
-    // حساب الوقت المتبقي بالأيام والأسابيع والشهور
     let remainingMs = targetDate.getTime() - now.getTime();
     if (remainingMs <= 0) {
         return {
@@ -93,7 +88,7 @@ function calculateExactMilestoneData(startDate, milestones) {
     };
 }
 
-// دالة رسم الصورة والتعديل المحترف عليها
+// دالة رسم الصورة والعداد
 async function renderCanvasCard(bgFileName, milestoneData) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -113,59 +108,49 @@ async function renderCanvasCard(bgFileName, milestoneData) {
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
-    // رسم الخلفية الأصلية المصممة
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // إحداثيات ومقاسات شريط التقدم
     const barX = canvas.width * 0.1;
     const barY = canvas.height * 0.54;
     const maxBarWidth = canvas.width * 0.8;
     const barHeight = 16;
 
-    // خلفية الشريط (رمادي شفاف ناعم)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.beginPath();
     ctx.roundRect(barX, barY, maxBarWidth, barHeight, 8);
     ctx.fill();
 
-    // الشريط البنفسجي المحسوب بدقة
     const currentBarWidth = Math.max(16, Math.min(maxBarWidth, maxBarWidth * milestoneData.progress));
     ctx.fillStyle = '#a855f7';
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 8);
     ctx.fill();
 
-    // إضافة ظلال خفيفة للخط لجعله واضحاً وفخماً
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 6;
 
-    // 1. كتابة النسبة المئوية والتقدم أعلى الشريط
     const percentText = `${Math.floor(milestoneData.progress * 100)}%`;
     ctx.fillStyle = '#a855f7';
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(percentText, barX, barY - 12);
 
-    // 2. كتابة الأرقام تحت الشارات (مثلاً: 3 / 6 أشهر) أعلى الشريط يميناً
     const monthsText = `${milestoneData.currentMonths} / ${milestoneData.targetMilestone} شهر`;
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(monthsText, barX + maxBarWidth, barY - 12);
 
-    // 3. كتابة الوقت المتبقي الكبير بالأسفل بوضوح كامل
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 30px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(milestoneData.timeText, canvas.width / 2, canvas.height * 0.76);
 
-    // إعادة ضبط الظل
     ctx.shadowBlur = 0;
 
     return canvas.toBuffer('image/png');
 }
 
-// دالة إرسال صورة بدون شارة كما صممتها
 async function renderNoBadgeCard(bgFileName) {
     const bgPath = path.join(__dirname, bgFileName);
     if (!fs.existsSync(bgPath)) {
@@ -196,7 +181,6 @@ client.on('messageCreate', async (message) => {
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
     else return;
 
-    // استجابة فورية بدون تأخير
     await message.channel.sendTyping().catch(() => {});
 
     let member = message.member;
@@ -218,6 +202,7 @@ client.on('messageCreate', async (message) => {
         }
 
         const startDate = new Date(member.premiumSince);
+        // تم ربطه بمصفوفة شهور البوست الصحيحة حصراً
         const milestoneData = calculateExactMilestoneData(startDate, BOOST_MILESTONES_MONTHS);
 
         const buffer = await renderCanvasCard('boost-bg.png', milestoneData);
@@ -247,6 +232,7 @@ client.on('messageCreate', async (message) => {
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
+        // مرتبط بمصفوفة شهور النيترو الصحيحة
         const milestoneData = calculateExactMilestoneData(startDate, NITRO_MILESTONES_MONTHS);
 
         const buffer = await renderCanvasCard('nitro-bg.png', milestoneData);
