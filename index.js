@@ -18,7 +18,6 @@ const client = new Client({
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت المتبقي للشارة القادمة بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
@@ -53,7 +52,6 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة رسم الشارات والوقت (حسب تصميمك الأصلي)
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -62,10 +60,6 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#0f111a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
 
@@ -75,7 +69,6 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
 
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // الخط البنفسجي للتقدم
     const barX = canvas.width * 0.1;
     const barY = canvas.height * 0.52;
     const maxBarWidth = canvas.width * 0.8;
@@ -88,7 +81,6 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // الوقت الدقيق المتبقي
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
@@ -97,29 +89,19 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     return canvas.toBuffer('image/png');
 }
 
-// دالة إرسال صورة "عدم وجود شارة" كما صممتها تماماً وبدون أي تعديل عليها
 async function renderNoBadgeCard(bgFileName) {
     const bgPath = path.join(__dirname, bgFileName);
-    
     if (!fs.existsSync(bgPath)) {
         const canvas = createCanvas(850, 420);
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#0f111a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
-
     const bgImage = await loadImage(bgPath);
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
-
-    // ترسم صورتك الأصلية بالكامل كما صممتها تماماً
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-
     return canvas.toBuffer('image/png');
 }
 
@@ -136,15 +118,11 @@ client.on('messageCreate', async (message) => {
     else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
     else return;
 
-    let member = message.member;
-    let user = message.author;
+    // إرسال جاري الكتابة فوراً للتسريع
+    message.channel.sendTyping().catch(() => {});
 
-    try {
-        user = await client.users.fetch(message.author.id, { force: true });
-        if (message.guild) {
-            member = await message.guild.members.fetch({ user: message.author.id, force: true });
-        }
-    } catch (e) {}
+    const member = message.member;
+    const user = message.author;
 
     // --- أمر البوست (b) ---
     if (command === 'b') {
