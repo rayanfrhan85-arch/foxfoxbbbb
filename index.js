@@ -1,6 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
+const { Client, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -13,16 +12,16 @@ const client = new Client({
 });
 
 // أشهر شارات النيترو والبوست الرسمية
-const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72]; // بالشهور
+const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
-// دالة حساب الوقت المتبقي للشارة التالية
+// دالة حساب الوقت المتبقي للشارة التالية بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
-    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك";
+    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك 🎉";
 
     let yearsDiff = targetDate.getFullYear() - now.getFullYear();
     let monthsDiff = targetDate.getMonth() - now.getMonth();
@@ -47,53 +46,13 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     if (weeks > 0) parts.push(`${weeks} أسابيع`);
     if (days > 0) parts.push(`${days} أيام`);
 
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
+    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⚡";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة لتوليد صورة الحالة (تشبه التصميم الموجود في الصورة)
-async function generateBadgeImage(type, currentMonths, timeRemainingText) {
-    const canvas = createCanvas(800, 450);
-    const ctx = canvas.getContext('2d');
-
-    // خلفية سوداء فخمة مع زوايا أو إطار
-    ctx.fillStyle = '#0b0b0e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // عنوان اللوحة
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(type === 'boost' ? 'اشارة البوست' : 'اشارة النيترو', canvas.width / 2, 60);
-
-    // رسم خط التقدم (Progress Bar)
-    const barX = 100;
-    const barY = 280;
-    const barWidth = 600;
-    const barHeight = 8;
-
-    ctx.fillStyle = '#2f3136';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-
-    // حساب نسبة التقدم بناءً على الشارة الحالية
-    const milestones = type === 'boost' ? BOOST_MILESTONES_MONTHS : NITRO_MILESTONES_MONTHS;
-    const maxMilestone = milestones[milestones.length - 1];
-    const progressPercent = Math.min(currentMonths / maxMilestone, 1);
-
-    ctx.fillStyle = '#7289da';
-    ctx.fillRect(barX, barY, barWidth * progressPercent, barHeight);
-
-    // نص الوقت المتبقي بالأسفل
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '24px sans-serif';
-    ctx.fillText(timeRemainingText, canvas.width / 2, 360);
-
-    return canvas.toBuffer();
-}
-
 client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`);
+    console.log(`Logged in as ${client.user.tag} | Developed by FOX`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -130,12 +89,8 @@ client.on('messageCreate', async (message) => {
         let targetMonth = BOOST_MILESTONES_MONTHS.find(m => m > currentMonths) || BOOST_MILESTONES_MONTHS[BOOST_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
-        const buffer = await generateBadgeImage('boost', currentMonths, timeRemaining);
-        const attachment = new AttachmentBuilder(buffer, { name: 'boost-badge.png' });
-
         return message.reply({
-            content: `<@${message.author.id}>`,
-            files: [attachment]
+            content: `<@${message.author.id}> 💎 **اشارة البوست**\n⏳ ${timeRemaining}\n🎯 **الهدف القادم:** شارة الـ ${targetMonth} أشهر\n🛠️ **DEV: FOX | REBA SERVER**`
         });
     }
 
@@ -148,15 +103,11 @@ client.on('messageCreate', async (message) => {
         if (now.getDate() < startDate.getDate()) currentMonths--;
         currentMonths = Math.max(0, currentMonths);
 
-        let targetMonth = NITRO_MILESTONES_MONTHS.print ? NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) : (NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1]);
+        let targetMonth = NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
 
-        const buffer = await generateBadgeImage('nitro', currentMonths, timeRemaining);
-        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-badge.png' });
-
         return message.reply({
-            content: `<@${message.author.id}>`,
-            files: [attachment]
+            content: `<@${message.author.id}> 🌟 **اشارة النيترو**\n⏳ ${timeRemaining}\n🎯 **الهدف القادم:** شارة الـ ${targetMonth} شهر\n🛠️ **DEV: FOX | REBA SERVER**`
         });
     }
 });
