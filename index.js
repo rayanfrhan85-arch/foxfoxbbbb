@@ -53,11 +53,10 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة رسم الصورة والخط البنفسجي والوقت فوق الصورة الموجودة بالملف الرئيسي
+// دالة رسم الشارات والوقت
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, bgFileName);
     
-    // إذا لم تكن الصورة موجودة، نرجع صورة فارغة لمنع أي خطأ
     if (!fs.existsSync(bgPath)) {
         const canvas = createCanvas(850, 420);
         const ctx = canvas.getContext('2d');
@@ -66,7 +65,7 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText("الصورة غير موجودة في المستودع!", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
 
@@ -74,10 +73,9 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
-    // رسم صورتك المصممة بالخلفية
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // --- رسم الخط البنفسجي المتزايد حسب نسبة الوقت ---
+    // الخط البنفسجي للتقدم
     const barX = canvas.width * 0.1;
     const barY = canvas.height * 0.52;
     const maxBarWidth = canvas.width * 0.8;
@@ -85,16 +83,53 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
 
     const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * progressPercent));
 
-    ctx.fillStyle = '#a855f7'; // لون الخط البنفسجي الفخم
+    ctx.fillStyle = '#a855f7';
     ctx.beginPath();
     ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // --- كتابة الوقت الدقيق المتبقي بالأسفل ---
+    // الوقت الدقيق المتبقي
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(timeText, canvas.width / 2, canvas.height * 0.72);
+
+    return canvas.toBuffer('image/png');
+}
+
+// دالة رسم صورة "عدم وجود شارة" مع تحسين مكان ووضوح الكتابة للأعلى
+async function renderNoBadgeCard(bgFileName, mainText) {
+    const bgPath = path.join(__dirname, bgFileName);
+    
+    if (!fs.existsSync(bgPath)) {
+        const canvas = createCanvas(850, 420);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0f111a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(mainText, canvas.width / 2, canvas.height / 2);
+        return canvas.toBuffer('image/png');
+    }
+
+    const bgImage = await loadImage(bgPath);
+    const canvas = createCanvas(bgImage.width, bgImage.height);
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+
+    // إضافة مستطيل شفّاف خلف النص لزيادة وضوح وقراءة الكتابة
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.beginPath();
+    ctx.roundRect(canvas.width * 0.1, canvas.height * 0.32, canvas.width * 0.8, 120, 16);
+    ctx.fill();
+
+    // رفع النص قليلاً للأعلى وزيادة وضوحه
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(mainText, canvas.width / 2, canvas.height * 0.42);
 
     return canvas.toBuffer('image/png');
 }
@@ -125,9 +160,8 @@ client.on('messageCreate', async (message) => {
     // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            // يرسل صورة no-boost.png الموجودة في القائمة عندك
-            const noBoostPath = path.join(__dirname, 'no-boost.png');
-            const attachment = new AttachmentBuilder(noBoostPath);
+            const buffer = await renderNoBadgeCard('no-boost.png', "حبيب قلبي ما عندك شارة، منوين أجيبلك .؟!!!");
+            const attachment = new AttachmentBuilder(buffer, { name: 'no-boost.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
@@ -141,7 +175,6 @@ client.on('messageCreate', async (message) => {
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
         let progress = currentMonths / targetMonth;
 
-        // يستعمل صورة boost.png كمطابق لملفاتك
         const buffer = await renderCustomCard('boost.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
 
@@ -163,9 +196,8 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            // يرسل صورة no-nitro.png الموجودة في القائمة عندك
-            const noNitroPath = path.join(__dirname, 'no-nitro.png');
-            const attachment = new AttachmentBuilder(noNitroPath);
+            const buffer = await renderNoBadgeCard('no-nitro.png', "حبيب قلبي ما عندك شارة، منوين أجيبلك .؟!!!");
+            const attachment = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
@@ -179,7 +211,6 @@ client.on('messageCreate', async (message) => {
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
         let progress = currentMonths / targetMonth;
 
-        // يستعمل صورة nitro.png كمطابق لملفاتك
         const buffer = await renderCustomCard('nitro.png', timeRemaining, progress);
         const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
 
