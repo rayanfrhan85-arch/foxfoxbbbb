@@ -53,7 +53,7 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة رسم الشارات والوقت
+// دالة رسم الشارات والوقت (حسب تصميمك الأصلي)
 async function renderCustomCard(bgFileName, timeText, progressPercent) {
     const bgPath = path.join(__dirname, bgFileName);
     
@@ -97,8 +97,8 @@ async function renderCustomCard(bgFileName, timeText, progressPercent) {
     return canvas.toBuffer('image/png');
 }
 
-// دالة رسم صورة "عدم وجود شارة" مع تحسين مكان ووضوح الكتابة للأعلى
-async function renderNoBadgeCard(bgFileName, mainText) {
+// دالة إرسال صورة "عدم وجود شارة" كما صممتها تماماً وبدون أي تعديل عليها
+async function renderNoBadgeCard(bgFileName) {
     const bgPath = path.join(__dirname, bgFileName);
     
     if (!fs.existsSync(bgPath)) {
@@ -107,9 +107,9 @@ async function renderNoBadgeCard(bgFileName, mainText) {
         ctx.fillStyle = '#0f111a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 30px sans-serif';
+        ctx.font = 'bold 26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(mainText, canvas.width / 2, canvas.height / 2);
+        ctx.fillText("الصورة غير موجودة!", canvas.width / 2, canvas.height / 2);
         return canvas.toBuffer('image/png');
     }
 
@@ -117,19 +117,8 @@ async function renderNoBadgeCard(bgFileName, mainText) {
     const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
+    // ترسم صورتك الأصلية بالكامل كما صممتها تماماً
     ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-
-    // إضافة مستطيل شفّاف خلف النص لزيادة وضوح وقراءة الكتابة
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.beginPath();
-    ctx.roundRect(canvas.width * 0.1, canvas.height * 0.32, canvas.width * 0.8, 120, 16);
-    ctx.fill();
-
-    // رفع النص قليلاً للأعلى وزيادة وضوحه
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(mainText, canvas.width / 2, canvas.height * 0.42);
 
     return canvas.toBuffer('image/png');
 }
@@ -160,7 +149,7 @@ client.on('messageCreate', async (message) => {
     // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            const buffer = await renderNoBadgeCard('no-boost.png', "حبيب قلبي ما عندك شارة، منوين أجيبلك .؟!!!");
+            const buffer = await renderNoBadgeCard('no-boost.png');
             const attachment = new AttachmentBuilder(buffer, { name: 'no-boost.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
@@ -196,7 +185,7 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            const buffer = await renderNoBadgeCard('no-nitro.png', "حبيب قلبي ما عندك شارة، منوين أجيبلك .؟!!!");
+            const buffer = await renderNoBadgeCard('no-nitro.png');
             const attachment = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
             return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
