@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,125 +14,204 @@ const client = new Client({
     ]
 });
 
-// شارات النيترو الرسمية (بالشهور ومسمياتها)
-const NITRO_MILESTONES = [
-    { months: 0, name: "بدون شارة" },
-    { months: 1, name: "Bronze (شهر واحد)" },
-    { months: 3, name: "Silver (3 أشهر)" },
-    { months: 6, name: "Gold (6 أشهر)" },
-    { months: 12, name: "Platinum (سنة واحدة)" },
-    { months: 24, name: "Diamond (سنتين)" },
-    { months: 36, name: "Emerald (3 سنوات)" },
-    { months: 60, name: "Ruby (5 سنوات)" },
-    { months: 72, name: "Opal (6+ سنوات)" }
+// 1. مصفوفة شارات النيترو الرسمية
+const NITRO_BADGES = [
+    { months: 1, name: "Bronze" },
+    { months: 3, name: "Silver" },
+    { months: 6, name: "Gold" },
+    { months: 12, name: "Platinum" },
+    { months: 24, name: "Diamond" },
+    { months: 36, name: "Emerald" },
+    { months: 60, name: "Ruby" },
+    { months: 72, name: "Opal" }
 ];
 
-// شارات البوست الرسمية (بالشهور ومسمياتها)
-const BOOST_MILESTONES = [
-    { months: 0, name: "بدون شارة" },
-    { months: 1, name: "الشارة الأولى (شهر)" },
-    { months: 2, name: "الشارة الثانية (شهرين)" },
-    { months: 3, name: "الشارة الثالثة (3 أشهر)" },
-    { months: 6, name: "الشارة الرابعة (6 أشهر)" },
-    { months: 9, name: "الشارة الخامسة (9 أشهر)" },
-    { months: 12, name: "الشارة السادسة (سنة)" },
-    { months: 15, name: "الشارة السابعة (15 شهر)" },
-    { months: 18, name: "الشارة الثامنة (18 شهر)" },
-    { months: 24, name: "الشارة التاسعة (سنتين)" }
+// 2. مصفوفة شارات البوست الرسمية
+const BOOST_BADGES = [
+    { months: 1, name: "Level 1" },
+    { months: 2, name: "Level 2" },
+    { months: 3, name: "Level 3" },
+    { months: 6, name: "Level 4" },
+    { months: 9, name: "Level 5" },
+    { months: 12, name: "Level 6" },
+    { months: 15, name: "Level 7" },
+    { months: 18, name: "Level 8" },
+    { months: 24, name: "Level 9" }
 ];
 
-// دالة حساب الشارات والوقت والنسبة بدقة فائقة
-function calculateMilestoneDetails(startDate, milestonesList) {
+// دالة حساب البيانات والوقت بدقة كاملة
+function calculateMilestone(startDate, badgeList) {
     const now = new Date();
-    
-    let yearsDiff = now.getFullYear() - startDate.getFullYear();
-    let monthsDiff = now.getMonth() - startDate.getMonth();
-    let currentTotalMonths = yearsDiff * 12 + monthsDiff;
+
+    // حساب الشهور الإجمالية بين تاريخ البداية وتاريخ اليوم
+    let years = now.getFullYear() - startDate.getFullYear();
+    let months = now.getMonth() - startDate.getMonth();
+    let totalMonths = years * 12 + months;
 
     if (now.getDate() < startDate.getDate()) {
-        currentTotalMonths--;
+        totalMonths--;
     }
-    currentTotalMonths = Math.max(0, currentTotalMonths);
+    totalMonths = Math.max(0, totalMonths);
 
-    let currentBadge = milestonesList[0].name;
-    let nextBadge = milestonesList[milestonesList.length - 1].name;
-    let targetMonths = milestonesList[milestonesList.length - 1].months;
+    // تحديد الشارة الحالية والشارة القادمة
+    let currentBadge = "لا توجد شارة";
+    let nextBadge = badgeList[0].name;
+    let targetMonths = badgeList[0].months;
     let prevMonths = 0;
 
-    for (let i = 0; i < milestonesList.length; i++) {
-        if (milestonesList[i].months <= currentTotalMonths) {
-            currentBadge = milestonesList[i].name;
-            prevMonths = milestonesList[i].months;
+    for (let i = 0; i < badgeList.length; i++) {
+        if (totalMonths >= badgeList[i].months) {
+            currentBadge = badgeList[i].name;
+            prevMonths = badgeList[i].months;
         }
-        if (milestonesList[i].months > currentTotalMonths) {
-            targetMonths = milestonesList[i].months;
-            nextBadge = milestonesList[i].name;
+        if (totalMonths < badgeList[i].months) {
+            nextBadge = badgeList[i].name;
+            targetMonths = badgeList[i].months;
             break;
         }
     }
 
-    if (currentTotalMonths >= milestonesList[milestonesList.length - 1].months) {
-        nextBadge = "وصلت لنهاية المطاف (أعلى شارة) 🎉";
+    // إذا تجاوز أعلى شارة
+    if (totalMonths >= badgeList[badgeList.length - 1].months) {
+        nextBadge = "أعلى شارة 🎉";
+        targetMonths = badgeList[badgeList.length - 1].months;
     }
 
+    // حساب موعد الشارة القادمة بالتمام
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
     const prevDate = new Date(startDate.getTime());
     prevDate.setMonth(prevDate.getMonth() + prevMonths);
 
+    // حساب نسبة التقدم لشريط الرسم
     let progress = 1;
-    if (targetDate > now && currentTotalMonths < targetMonths) {
-        let totalSpan = targetDate.getTime() - prevDate.getTime();
-        let currentSpan = now.getTime() - prevDate.getTime();
-        progress = Math.min(1, Math.max(0, currentSpan / totalSpan));
+    if (targetDate > now && targetMonths > prevMonths) {
+        let totalTime = targetDate.getTime() - prevDate.getTime();
+        let passedTime = now.getTime() - prevDate.getTime();
+        progress = Math.min(1, Math.max(0, passedTime / totalTime));
     }
 
-    let remainingMs = targetDate.getTime() - now.getTime();
-    if (remainingMs <= 0 || currentTotalMonths >= milestonesList[milestonesList.length - 1].months) {
+    // حساب الأيام والأسابيع والشهور المتبقية
+    let diffMs = targetDate.getTime() - now.getTime();
+    if (diffMs <= 0 || totalMonths >= badgeList[badgeList.length - 1].months) {
         return {
-            timeText: "وصلت لنهاية المطاف عاشت ايدك 🎉",
-            progressPercent: 100,
-            currentMonths: currentTotalMonths,
             currentBadge,
-            nextBadge: "مكتملة بالكامل ✨"
+            nextBadge,
+            progress: 1,
+            timeText: "وصلت إلى الشارة النهائية 🎉",
+            currentMonths: totalMonths,
+            targetMonths
         };
     }
 
-    let totalDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-    let monthsLeft = Math.floor(totalDays / 30);
-    let remainingDaysAfterMonths = totalDays % 30;
-    let weeksLeft = Math.floor(remainingDaysAfterMonths / 7);
-    let daysLeft = remainingDaysAfterMonths % 7;
+    let totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    let remMonths = Math.floor(totalDays / 30);
+    let remDays = totalDays % 30;
+    let remWeeks = Math.floor(remDays / 7);
+    let finalDays = remDays % 7;
 
     let parts = [];
-    if (monthsLeft > 0) parts.push(`${monthsLeft} شهر`);
-    if (weeksLeft > 0) parts.push(`${weeksLeft} أسابيع`);
-    if (daysLeft > 0) parts.push(`${daysLeft} أيام`);
+    if (remMonths > 0) parts.push(`${remMonths} شهر`);
+    if (remWeeks > 0) parts.push(`${remWeeks} أسابيع`);
+    if (finalDays > 0) parts.push(`${finalDays} أيام`);
 
-    let timeText = parts.length > 0 ? `بعد **${parts.join(' و ')}**` : "قريباً جداً ⚡";
+    let timeText = parts.length > 0 ? `متبقي: ${parts.join(' و ')}` : "متبقي ساعات قليلة ⚡";
 
     return {
-        timeText,
-        progressPercent: Math.floor(progress * 100),
-        currentMonths: currentTotalMonths,
         currentBadge,
-        nextBadge
+        nextBadge,
+        progress,
+        timeText,
+        currentMonths: totalMonths,
+        targetMonths
     };
 }
 
+// دالة الرسم على صورة الخلفية
+async function drawCard(bgName, data) {
+    const bgPath = path.join(__dirname, bgName);
+    const canvas = createCanvas(850, 420);
+    const ctx = canvas.getContext('2d');
+
+    if (fs.existsSync(bgPath)) {
+        const bg = await loadImage(bgPath);
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#0f111a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    if (!data) return canvas.toBuffer('image/png');
+
+    // إحداثيات ومواقع الرسم
+    const barX = canvas.width * 0.08;
+    const barY = canvas.height * 0.58;
+    const barWidth = canvas.width * 0.84;
+    const barHeight = 18;
+
+    // 1. خلفية شريط التقدم
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, barWidth, barHeight, 9);
+    ctx.fill();
+
+    // 2. الشريط البنفسجي الممتلئ
+    const fillWidth = Math.max(18, Math.min(barWidth, barWidth * data.progress));
+    ctx.fillStyle = '#a855f7';
+    ctx.beginPath();
+    ctx.roundRect(barX, barY, fillWidth, barHeight, 9);
+    ctx.fill();
+
+    // إضافة ظلال خفيفة للنصوص لتظهر بشكل فخم وواضح جداً
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 6;
+
+    // 3. كتابة الشارة الحالية والشارة التالية فوق الشريط
+    ctx.font = 'bold 22px sans-serif';
+
+    // الشارة الحالية (جهة اليسار)
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'left';
+    ctx.fillText(`الحالية: ${data.currentBadge}`, barX, barY - 14);
+
+    // الشارة التالية (جهة اليمين)
+    ctx.fillStyle = '#c084fc';
+    ctx.textAlign = 'right';
+    ctx.fillText(`التالية: ${data.nextBadge}`, barX + barWidth, barY - 14);
+
+    // 4. النسبة المئوية والشهور تحت الشريط
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#e2e8f0';
+
+    ctx.textAlign = 'left';
+    ctx.fillText(`التقدم: ${Math.floor(data.progress * 100)}%`, barX, barY + barHeight + 24);
+
+    ctx.textAlign = 'right';
+    ctx.fillText(`الشهور: ${data.currentMonths} / ${data.targetMonths}`, barX + barWidth, barY + barHeight + 24);
+
+    // 5. الوقت المتبقي في الأسفل بمنتصف الكرت
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(`⏱️ ${data.timeText}`, canvas.width / 2, canvas.height * 0.88);
+
+    ctx.shadowBlur = 0;
+    return canvas.toBuffer('image/png');
+}
+
 client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag} | DEV: FOX`);
+    console.log(`Bot Ready: ${client.user.tag} | Dev: FOX`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    const content = message.content.trim().toLowerCase();
-    let command = "";
-    if (content === 'n' || content === 'nitro' || content === '-n') command = 'n';
-    else if (content === 'b' || content === 'boost' || content === '-b') command = 'b';
-    else return;
+    const cmd = message.content.trim().toLowerCase();
+    let isNitro = (cmd === 'n' || cmd === 'nitro' || cmd === '-n');
+    let isBoost = (cmd === 'b' || cmd === 'boost' || cmd === '-b');
+
+    if (!isNitro && !isBoost) return;
 
     await message.channel.sendTyping().catch(() => {});
 
@@ -145,38 +225,25 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // --- أمر البوست (b) ---
-    if (command === 'b') {
+    // --- أمر البوست ---
+    if (isBoost) {
         if (!member || !member.premiumSince) {
-            const bgPath = path.join(__dirname, 'no-boost.png');
-            const attachment = new AttachmentBuilder(bgPath, { name: 'no-boost.png' });
-            return message.reply({ 
-                content: `<@${message.author.id}>\n` +
-                         `📍 **الشارة الحالية:** \`بدون شارة\` (0 شهر)\n` +
-                         `🎯 **الشارة التالية:** \`الشارة الأولى (شهر)\`\n` +
-                         `📊 **نسبة التقدم:** \`0%\`\n` +
-                         `⏱️ **الوقت المتبقي:** غير متوفر`,
-                files: [attachment] 
-            });
+            const buffer = await drawCard('no-boost.png', null);
+            const file = new AttachmentBuilder(buffer, { name: 'no-boost.png' });
+            return message.reply({ content: `<@${message.author.id}>`, files: [file] });
         }
 
         const startDate = new Date(member.premiumSince);
-        const data = calculateMilestoneDetails(startDate, BOOST_MILESTONES);
-        const bgPath = path.join(__dirname, 'boost-bg.png'); // صورة البوست الفخمة الخاصة بك
-        const attachment = new AttachmentBuilder(bgPath, { name: 'boost-bg.png' });
+        const data = calculateMilestone(startDate, BOOST_BADGES);
 
-        return message.reply({
-            content: `<@${message.author.id}>\n` +
-                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
-                     `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
-                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\`\n` +
-                     `⏱️ **الوقت المتبقي:** ${data.timeText}`,
-            files: [attachment]
-        });
+        const buffer = await drawCard('boost-bg.png', data);
+        const file = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
+
+        return message.reply({ content: `<@${message.author.id}>`, files: [file] });
     }
 
-    // --- أمر النيترو (n) ---
-    if (command === 'n') {
+    // --- أمر النيترو ---
+    if (isNitro) {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
         const isCustomBanner = user.banner !== null;
@@ -190,31 +257,18 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            const bgPath = path.join(__dirname, 'no-nitro.png');
-            const attachment = new AttachmentBuilder(bgPath, { name: 'no-nitro.png' });
-            return message.reply({ 
-                content: `<@${message.author.id}>\n` +
-                         `📍 **الشارة الحالية:** \`بدون شارة\` (0 شهر)\n` +
-                         `🎯 **الشارة التالية:** \`Bronze (شهر واحد)\`\n` +
-                         `📊 **نسبة التقدم:** \`0%\`\n` +
-                         `⏱️ **الوقت المتبقي:** غير متوفر`,
-                files: [attachment] 
-            });
+            const buffer = await drawCard('no-nitro.png', null);
+            const file = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
+            return message.reply({ content: `<@${message.author.id}>`, files: [file] });
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        const data = calculateMilestoneDetails(startDate, NITRO_MILESTONES);
-        const bgPath = path.join(__dirname, 'nitro-bg.png'); // صورة النيترو الفخمة الخاصة بك
-        const attachment = new AttachmentBuilder(bgPath, { name: 'nitro-bg.png' });
+        const data = calculateMilestone(startDate, NITRO_BADGES);
 
-        return message.reply({
-            content: `<@${message.author.id}>\n` +
-                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
-                     `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
-                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\`\n` +
-                     `⏱️ **الوقت المتبقي:** ${data.timeText}`,
-            files: [attachment]
-        });
+        const buffer = await drawCard('nitro-bg.png', data);
+        const file = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
+
+        return message.reply({ content: `<@${message.author.id}>`, files: [file] });
     }
 });
 
