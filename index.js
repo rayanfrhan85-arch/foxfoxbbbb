@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
-const { createCanvas } = require('@napi-rs/canvas');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const path = require('path');
 
 const client = new Client({
     intents: [
@@ -12,15 +13,17 @@ const client = new Client({
     ]
 });
 
+// أشهر شارات النيترو والبوست الرسمية (بالشهور)
 const NITRO_MILESTONES_MONTHS = [1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_MILESTONES_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
+// دالة حساب الوقت المتبقي للشارة التالية بدقة
 function getExactTargetRemainingTime(startDate, targetMonths) {
     const now = new Date();
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
-    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك";
+    if (targetDate <= now) return "وصلت لنهاية المطاف عاشت ايدك 🎉";
 
     let yearsDiff = targetDate.getFullYear() - now.getFullYear();
     let monthsDiff = targetDate.getMonth() - now.getMonth();
@@ -45,60 +48,42 @@ function getExactTargetRemainingTime(startDate, targetMonths) {
     if (weeks > 0) parts.push(`${weeks} أسابيع`);
     if (days > 0) parts.push(`${days} أيام`);
 
-    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة";
+    if (parts.length === 0) return "سوف تصل الى الشارة التالية بعد دقائق قليلة ⚡";
 
     return `سوف تصل الى الشارة التالية بعد ${parts.join(' و ')}`;
 }
 
-// دالة لتوليد الصورة المطابقة تماماً لتصميمك
-async function generateBadgeCanvas(type, currentMonths, timeRemainingText) {
-    const canvas = createCanvas(900, 480);
+// دالة رسم الخط البنفسجي والوقت فوق الصورة التي صممتها
+async function renderCustomCard(bgFileName, timeText, progressPercent) {
+    const bgPath = path.join(__dirname, 'assets', bgFileName);
+    const bgImage = await loadImage(bgPath);
+
+    const canvas = createCanvas(bgImage.width, bgImage.height);
     const ctx = canvas.getContext('2d');
 
-    // خلفية سوداء فخمة
-    ctx.fillStyle = '#0a0a0c';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // رسم صورة الخلفية التي صممتها أنت
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-    // عنوان اللوحة في الأعلى
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 38px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(type === 'boost' ? 'اشارة البوست' : 'اشارة النيترو', canvas.width / 2, 60);
+    // --- رسم الخط البنفسجي المتزايد حسب نسبة الوقت ---
+    // يمكنك تعديل إحداثيات موقع الخط (BarX, BarY) لتنطبق على تصميمك بالضبط
+    const barX = canvas.width * 0.1;
+    const barY = canvas.height * 0.52;
+    const maxBarWidth = canvas.width * 0.8;
+    const barHeight = 14;
 
-    // خط التقدم (Progress Bar)
-    const barX = 80;
-    const barY = 220;
-    const barWidth = 740;
-    const barHeight = 12;
+    const currentBarWidth = Math.max(15, Math.min(maxBarWidth, maxBarWidth * progressPercent));
 
-    // الخط الخلفي الرمادي
-    ctx.fillStyle = '#2f3136';
+    // رسم التوهج والخط البنفسجي
+    ctx.fillStyle = '#a855f7'; // لون بنفسجي فخم
     ctx.beginPath();
-    ctx.roundRect(barX, barY, barWidth, barHeight, 6);
+    ctx.roundRect(barX, barY, currentBarWidth, barHeight, 7);
     ctx.fill();
 
-    // حساب نسبة التقدم بناءً على الشهور الحالية
-    const milestones = type === 'boost' ? BOOST_MILESTONES_MONTHS : NITRO_MILESTONES_MONTHS;
-    const maxMilestone = milestones[milestones.length - 1];
-    const progressPercent = Math.min(currentMonths / maxMilestone, 1);
-    const progressWidth = Math.max(20, barWidth * progressPercent);
-
-    // الخط الملون المتقدم (بنفسجي / وردي متناسق)
-    ctx.fillStyle = '#9b59b6';
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, progressWidth, barHeight, 6);
-    ctx.fill();
-
-    // النصوص بالأسفل (الوقت المتبقي)
+    // --- كتابة النص الدقيق للوقت بالأسفل ---
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 26px sans-serif';
+    ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(timeRemainingText, canvas.width / 2, 330);
-
-    // حقوق البوت أو البصمة بالأسفل
-    ctx.fillStyle = '#72767d';
-    ctx.font = '16px sans-serif';
-    ctx.fillText('DEV: FOX | REBA SERVER', canvas.width / 2, 430);
+    ctx.fillText(timeText, canvas.width / 2, canvas.height * 0.72);
 
     return canvas.toBuffer('image/png');
 }
@@ -126,13 +111,12 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // أمر البوست (b)
+    // --- أمر البوست (b) ---
     if (command === 'b') {
         if (!member || !member.premiumSince) {
-            // إذا لم يكن لديه شارة بوست يرسل له صورة أو رسالة توضح ذلك مع منشن
-            return message.reply({
-                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة بوست، من وين أجيبلك؟! 💎❌`
-            });
+            const noBoostPath = path.join(__dirname, 'assets', 'no-boost.png');
+            const attachment = new AttachmentBuilder(noBoostPath);
+            return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
         const startDate = new Date(member.premiumSince);
@@ -143,17 +127,15 @@ client.on('messageCreate', async (message) => {
 
         let targetMonth = BOOST_MILESTONES_MONTHS.find(m => m > currentMonths) || BOOST_MILESTONES_MONTHS[BOOST_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
+        let progress = currentMonths / targetMonth;
 
-        const buffer = await generateBadgeCanvas('boost', currentMonths, timeRemaining);
-        const attachment = new AttachmentBuilder(buffer, { name: 'boost-badge.png' });
+        const buffer = await renderCustomCard('boost-bg.png', timeRemaining, progress);
+        const attachment = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
 
-        return message.reply({
-            content: `<@${message.author.id}>`,
-            files: [attachment]
-        });
+        return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
     }
 
-    // أمر النيترو (n)
+    // --- أمر النيترو (n) ---
     if (command === 'n') {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
@@ -168,14 +150,12 @@ client.on('messageCreate', async (message) => {
                          isBoosting;
 
         if (!hasNitro) {
-            // إذا لم يكن لديه شارة نيترو يرسل له رسالة مع منشن
-            return message.reply({
-                content: `<@${message.author.id}> حبيب قلبي ما عندك شارة نيترو، شتريد أجبلك؟! ✨❌`
-            });
+            const noNitroPath = path.join(__dirname, 'assets', 'no-nitro.png');
+            const attachment = new AttachmentBuilder(noNitroPath);
+            return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        
         let now = new Date();
         let currentMonths = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
         if (now.getDate() < startDate.getDate()) currentMonths--;
@@ -183,14 +163,12 @@ client.on('messageCreate', async (message) => {
 
         let targetMonth = NITRO_MILESTONES_MONTHS.find(m => m > currentMonths) || NITRO_MILESTONES_MONTHS[NITRO_MILESTONES_MONTHS.length - 1];
         let timeRemaining = getExactTargetRemainingTime(startDate, targetMonth);
+        let progress = currentMonths / targetMonth;
 
-        const buffer = await generateBadgeCanvas('nitro', currentMonths, timeRemaining);
-        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-badge.png' });
+        const buffer = await renderCustomCard('nitro-bg.png', timeRemaining, progress);
+        const attachment = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
 
-        return message.reply({
-            content: `<@${message.author.id}>`,
-            files: [attachment]
-        });
+        return message.reply({ content: `<@${message.author.id}>`, files: [attachment] });
     }
 });
 
