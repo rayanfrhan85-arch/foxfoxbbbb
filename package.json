@@ -13,6 +13,9 @@
   "dependencies": {
     "@napi-rs/canvas": "^1.0.11",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "distube": "^5.0.0",
+    "@distube/yt-dlp": "^2.0.0",
+    "@discordjs/voice": "^0.17.0"
   }
 }
