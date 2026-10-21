@@ -52,7 +52,7 @@ function calculateSkyMilestone(startDate, badgeList, maxMonths) {
     }
     totalMonths = Math.max(0, totalMonths);
 
-    let currentBadge = "بداية الطريق (أقل من شهر)";
+    let currentBadge = "بداية الطريق بعدك كتكوت (أقل من شهر)";
     let nextBadge = badgeList[0].name;
     let targetMonths = badgeList[0].months;
     let prevMonths = 0;
@@ -143,7 +143,7 @@ client.on('messageCreate', async (message) => {
         return message.reply({
             content: `<@${message.author.id}>\n` +
                      `✨ **أهلاً بك سيدي (VIP)** 👑\n` +
-                     `🔥 **السكربت تم تطويره وبرمجته بالكامل بواسطة المطور: FOX** 🦊`
+                     ` **السكربت خاص ب: FOX** `
         });
     }
 
