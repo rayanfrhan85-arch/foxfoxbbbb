@@ -11,6 +11,9 @@ const client = new Client({
     ]
 });
 
+// 👑 آيدي المطور (FOX VIP)
+const SPECIAL_USER_ID = "1554347941471453186";
+
 // شارات النيترو (بالشهور)
 const NITRO_BADGES = [
     { months: 1, name: "Bronze (شهر واحد)" },
@@ -48,13 +51,9 @@ function getAccurateBadgeData(startDate, badgeList) {
     }
     totalMonths = Math.max(0, totalMonths);
 
-    if (totalMonths < badgeList[0].months) {
-        return null;
-    }
-
-    let currentBadge = badgeList[0].name;
-    let nextBadge = badgeList[badgeList.length - 1].name;
-    let targetMonths = badgeList[badgeList.length - 1].months;
+    let currentBadge = "بداية الطريق (أقل من شهر)";
+    let nextBadge = badgeList[0].name;
+    let targetMonths = badgeList[0].months;
     let prevMonths = 0;
 
     for (let i = 0; i < badgeList.length; i++) {
@@ -99,18 +98,27 @@ function getAccurateBadgeData(startDate, badgeList) {
         };
     }
 
-    let totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    let remMonths = Math.floor(totalDays / 30);
-    let remDays = totalDays % 30;
-    let remWeeks = Math.floor(remDays / 7);
-    let finalDays = remDays % 7;
+    let totalMinutes = Math.floor(diffMs / (1000 * 60));
+    let remMonths = Math.floor(totalMinutes / (30 * 24 * 60));
+    let remMinutesAfterMonths = totalMinutes % (30 * 24 * 60);
+    
+    let remWeeks = Math.floor(remMinutesAfterMonths / (7 * 24 * 60));
+    let remMinutesAfterWeeks = remMinutesAfterMonths % (7 * 24 * 60);
+
+    let remDays = Math.floor(remMinutesAfterWeeks / (24 * 60));
+    let remMinutesAfterDays = remMinutesAfterWeeks % (24 * 60);
+
+    let remHours = Math.floor(remMinutesAfterDays / 60);
+    let remMinutes = remMinutesAfterDays % 60;
 
     let parts = [];
     if (remMonths > 0) parts.push(`${remMonths} شهر`);
     if (remWeeks > 0) parts.push(`${remWeeks} أسابيع`);
-    if (finalDays > 0) parts.push(`${finalDays} أيام`);
+    if (remDays > 0) parts.push(`${remDays} أيام`);
+    if (remHours > 0) parts.push(`${remHours} ساعة`);
+    if (remMinutes > 0) parts.push(`${remMinutes} دقيقة`);
 
-    let timeText = parts.length > 0 ? `بعد **${parts.join(' و ')}**` : "خلال ساعات قليلة ⚡";
+    let timeText = parts.length > 0 ? `بعد **${parts.join(' و ')}**` : "خلال لحظات ⚡";
 
     return {
         currentBadge,
@@ -135,6 +143,15 @@ client.on('messageCreate', async (message) => {
 
     if (!isNitro && !isBoost) return;
 
+    // 👑 الرد الخاص بك عند كتابتك للأمر (VIP Special Message)
+    if (message.author.id === SPECIAL_USER_ID) {
+        return message.reply({
+            content: `<@${message.author.id}>\n` +
+                     `✨ **أهلاً بك سيدي (VIP)** 👑\n` +
+                     `🔥 **السكربت تم تطويره وبرمجته بالكامل بواسطة المطور: FOX** 🦊`
+        });
+    }
+
     let member = message.member;
     let user = message.author;
 
@@ -145,19 +162,14 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // --- أمر البوست ---
+    // --- أمر البوست للأعضاء الآخرين ---
     if (isBoost) {
-        // الفحص المباشر لشارة البوست في الحساب
         if (!member || !member.premiumSince) {
             return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة بوست حالياً ❤️**` });
         }
 
         const startDate = new Date(member.premiumSince);
         const data = getAccurateBadgeData(startDate, BOOST_BADGES);
-
-        if (!data) {
-            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة بوست حالياً ❤️**` });
-        }
 
         return message.reply({
             content: `<@${message.author.id}>\n` +
@@ -168,16 +180,14 @@ client.on('messageCreate', async (message) => {
         });
     }
 
-    // --- أمر النيترو ---
+    // --- أمر النيترو للأعضاء الآخرين ---
     if (isNitro) {
-        // فحص شارات الحساب المباشرة (User Badges / Flags)
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
         const isCustomBanner = user.banner !== null;
         const avatarDecoration = user.avatarDecoration;
         const isBoosting = member && member.premiumSince !== null;
 
-        // التأكد الفعلي من وجود أي شارة نيترو ظاهرية بالبروفايل
         const hasNitroBadge = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
                               isAnimatedAvatar || 
                               isCustomBanner || 
@@ -190,10 +200,6 @@ client.on('messageCreate', async (message) => {
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         const data = getAccurateBadgeData(startDate, NITRO_BADGES);
-
-        if (!data) {
-            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة نيترو حالياً ❤️**` });
-        }
 
         return message.reply({
             content: `<@${message.author.id}>\n` +
