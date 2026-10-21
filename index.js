@@ -1,8 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const path = require('path');
-const fs = require('fs');
+const { Client, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -14,36 +11,34 @@ const client = new Client({
     ]
 });
 
-// 1. مصفوفة شارات النيترو الرسمية
+// شارات النيترو (بالشهور)
 const NITRO_BADGES = [
-    { months: 1, name: "Bronze" },
-    { months: 3, name: "Silver" },
-    { months: 6, name: "Gold" },
-    { months: 12, name: "Platinum" },
-    { months: 24, name: "Diamond" },
-    { months: 36, name: "Emerald" },
-    { months: 60, name: "Ruby" },
-    { months: 72, name: "Opal" }
+    { months: 1, name: "Bronze (شهر واحد)" },
+    { months: 3, name: "Silver (3 أشهر)" },
+    { months: 6, name: "Gold (6 أشهر)" },
+    { months: 12, name: "Platinum (سنة واحدة)" },
+    { months: 24, name: "Diamond (سنتين)" },
+    { months: 36, name: "Emerald (3 سنوات)" },
+    { months: 60, name: "Ruby (5 سنوات)" },
+    { months: 72, name: "Opal (6+ سنوات)" }
 ];
 
-// 2. مصفوفة شارات البوست الرسمية
+// شارات البوست (بالشهور)
 const BOOST_BADGES = [
-    { months: 1, name: "Level 1" },
-    { months: 2, name: "Level 2" },
-    { months: 3, name: "Level 3" },
-    { months: 6, name: "Level 4" },
-    { months: 9, name: "Level 5" },
-    { months: 12, name: "Level 6" },
-    { months: 15, name: "Level 7" },
-    { months: 18, name: "Level 8" },
-    { months: 24, name: "Level 9" }
+    { months: 1, name: "الشارة الأولى (شهر واحد)" },
+    { months: 2, name: "الشارة الثانية (شهرين)" },
+    { months: 3, name: "الشارة الثالثة (3 أشهر)" },
+    { months: 6, name: "الشارة الرابعة (6 أشهر)" },
+    { months: 9, name: "الشارة الخامسة (9 أشهر)" },
+    { months: 12, name: "الشارة السادسة (سنة واحدة)" },
+    { months: 15, name: "الشارة السابعة (15 شهر)" },
+    { months: 18, name: "الشارة الثامنة (18 شهر)" },
+    { months: 24, name: "الشارة التاسعة (سنتين)" }
 ];
 
-// دالة حساب البيانات والوقت بدقة كاملة
-function calculateMilestone(startDate, badgeList) {
+function getAccurateBadgeData(startDate, badgeList) {
     const now = new Date();
 
-    // حساب الشهور الإجمالية بين تاريخ البداية وتاريخ اليوم
     let years = now.getFullYear() - startDate.getFullYear();
     let months = now.getMonth() - startDate.getMonth();
     let totalMonths = years * 12 + months;
@@ -53,10 +48,13 @@ function calculateMilestone(startDate, badgeList) {
     }
     totalMonths = Math.max(0, totalMonths);
 
-    // تحديد الشارة الحالية والشارة القادمة
-    let currentBadge = "لا توجد شارة";
-    let nextBadge = badgeList[0].name;
-    let targetMonths = badgeList[0].months;
+    if (totalMonths < badgeList[0].months) {
+        return null;
+    }
+
+    let currentBadge = badgeList[0].name;
+    let nextBadge = badgeList[badgeList.length - 1].name;
+    let targetMonths = badgeList[badgeList.length - 1].months;
     let prevMonths = 0;
 
     for (let i = 0; i < badgeList.length; i++) {
@@ -71,20 +69,17 @@ function calculateMilestone(startDate, badgeList) {
         }
     }
 
-    // إذا تجاوز أعلى شارة
     if (totalMonths >= badgeList[badgeList.length - 1].months) {
-        nextBadge = "أعلى شارة 🎉";
+        nextBadge = "وصلت لأعلى شارة 🎉";
         targetMonths = badgeList[badgeList.length - 1].months;
     }
 
-    // حساب موعد الشارة القادمة بالتمام
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
     const prevDate = new Date(startDate.getTime());
     prevDate.setMonth(prevDate.getMonth() + prevMonths);
 
-    // حساب نسبة التقدم لشريط الرسم
     let progress = 1;
     if (targetDate > now && targetMonths > prevMonths) {
         let totalTime = targetDate.getTime() - prevDate.getTime();
@@ -92,14 +87,13 @@ function calculateMilestone(startDate, badgeList) {
         progress = Math.min(1, Math.max(0, passedTime / totalTime));
     }
 
-    // حساب الأيام والأسابيع والشهور المتبقية
     let diffMs = targetDate.getTime() - now.getTime();
     if (diffMs <= 0 || totalMonths >= badgeList[badgeList.length - 1].months) {
         return {
             currentBadge,
             nextBadge,
-            progress: 1,
-            timeText: "وصلت إلى الشارة النهائية 🎉",
+            progressPercent: 100,
+            timeText: "وصلت إلى أعلى الشارات 🎉",
             currentMonths: totalMonths,
             targetMonths
         };
@@ -116,92 +110,20 @@ function calculateMilestone(startDate, badgeList) {
     if (remWeeks > 0) parts.push(`${remWeeks} أسابيع`);
     if (finalDays > 0) parts.push(`${finalDays} أيام`);
 
-    let timeText = parts.length > 0 ? `متبقي: ${parts.join(' و ')}` : "متبقي ساعات قليلة ⚡";
+    let timeText = parts.length > 0 ? `بعد **${parts.join(' و ')}**` : "خلال ساعات قليلة ⚡";
 
     return {
         currentBadge,
         nextBadge,
-        progress,
+        progressPercent: Math.floor(progress * 100),
         timeText,
         currentMonths: totalMonths,
         targetMonths
     };
 }
 
-// دالة الرسم على صورة الخلفية
-async function drawCard(bgName, data) {
-    const bgPath = path.join(__dirname, bgName);
-    const canvas = createCanvas(850, 420);
-    const ctx = canvas.getContext('2d');
-
-    if (fs.existsSync(bgPath)) {
-        const bg = await loadImage(bgPath);
-        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
-    } else {
-        ctx.fillStyle = '#0f111a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    if (!data) return canvas.toBuffer('image/png');
-
-    // إحداثيات ومواقع الرسم
-    const barX = canvas.width * 0.08;
-    const barY = canvas.height * 0.58;
-    const barWidth = canvas.width * 0.84;
-    const barHeight = 18;
-
-    // 1. خلفية شريط التقدم
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, barWidth, barHeight, 9);
-    ctx.fill();
-
-    // 2. الشريط البنفسجي الممتلئ
-    const fillWidth = Math.max(18, Math.min(barWidth, barWidth * data.progress));
-    ctx.fillStyle = '#a855f7';
-    ctx.beginPath();
-    ctx.roundRect(barX, barY, fillWidth, barHeight, 9);
-    ctx.fill();
-
-    // إضافة ظلال خفيفة للنصوص لتظهر بشكل فخم وواضح جداً
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 6;
-
-    // 3. كتابة الشارة الحالية والشارة التالية فوق الشريط
-    ctx.font = 'bold 22px sans-serif';
-
-    // الشارة الحالية (جهة اليسار)
-    ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'left';
-    ctx.fillText(`الحالية: ${data.currentBadge}`, barX, barY - 14);
-
-    // الشارة التالية (جهة اليمين)
-    ctx.fillStyle = '#c084fc';
-    ctx.textAlign = 'right';
-    ctx.fillText(`التالية: ${data.nextBadge}`, barX + barWidth, barY - 14);
-
-    // 4. النسبة المئوية والشهور تحت الشريط
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#e2e8f0';
-
-    ctx.textAlign = 'left';
-    ctx.fillText(`التقدم: ${Math.floor(data.progress * 100)}%`, barX, barY + barHeight + 24);
-
-    ctx.textAlign = 'right';
-    ctx.fillText(`الشهور: ${data.currentMonths} / ${data.targetMonths}`, barX + barWidth, barY + barHeight + 24);
-
-    // 5. الوقت المتبقي في الأسفل بمنتصف الكرت
-    ctx.font = 'bold 26px sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.fillText(`⏱️ ${data.timeText}`, canvas.width / 2, canvas.height * 0.88);
-
-    ctx.shadowBlur = 0;
-    return canvas.toBuffer('image/png');
-}
-
 client.on('ready', () => {
-    console.log(`Bot Ready: ${client.user.tag} | Dev: FOX`);
+    console.log(`Bot Online: ${client.user.tag} | DEV: FOX`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -212,8 +134,6 @@ client.on('messageCreate', async (message) => {
     let isBoost = (cmd === 'b' || cmd === 'boost' || cmd === '-b');
 
     if (!isNitro && !isBoost) return;
-
-    await message.channel.sendTyping().catch(() => {});
 
     let member = message.member;
     let user = message.author;
@@ -227,48 +147,61 @@ client.on('messageCreate', async (message) => {
 
     // --- أمر البوست ---
     if (isBoost) {
+        // الفحص المباشر لشارة البوست في الحساب
         if (!member || !member.premiumSince) {
-            const buffer = await drawCard('no-boost.png', null);
-            const file = new AttachmentBuilder(buffer, { name: 'no-boost.png' });
-            return message.reply({ content: `<@${message.author.id}>`, files: [file] });
+            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة بوست حالياً ❤️**` });
         }
 
         const startDate = new Date(member.premiumSince);
-        const data = calculateMilestone(startDate, BOOST_BADGES);
+        const data = getAccurateBadgeData(startDate, BOOST_BADGES);
 
-        const buffer = await drawCard('boost-bg.png', data);
-        const file = new AttachmentBuilder(buffer, { name: 'boost-card.png' });
+        if (!data) {
+            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة بوست حالياً ❤️**` });
+        }
 
-        return message.reply({ content: `<@${message.author.id}>`, files: [file] });
+        return message.reply({
+            content: `<@${message.author.id}>\n` +
+                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
+                     `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
+                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\` (${data.currentMonths} / ${data.targetMonths} شهر)\n` +
+                     `⏱️ **الوقت المتبقي:** ${data.timeText}`
+        });
     }
 
     // --- أمر النيترو ---
     if (isNitro) {
+        // فحص شارات الحساب المباشرة (User Badges / Flags)
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
         const isCustomBanner = user.banner !== null;
         const avatarDecoration = user.avatarDecoration;
         const isBoosting = member && member.premiumSince !== null;
 
-        const hasNitro = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
-                         isAnimatedAvatar || 
-                         isCustomBanner || 
-                         avatarDecoration || 
-                         isBoosting;
+        // التأكد الفعلي من وجود أي شارة نيترو ظاهرية بالبروفايل
+        const hasNitroBadge = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
+                              isAnimatedAvatar || 
+                              isCustomBanner || 
+                              avatarDecoration || 
+                              isBoosting;
 
-        if (!hasNitro) {
-            const buffer = await drawCard('no-nitro.png', null);
-            const file = new AttachmentBuilder(buffer, { name: 'no-nitro.png' });
-            return message.reply({ content: `<@${message.author.id}>`, files: [file] });
+        if (!hasNitroBadge) {
+            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة نيترو حالياً ❤️**` });
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        const data = calculateMilestone(startDate, NITRO_BADGES);
+        const data = getAccurateBadgeData(startDate, NITRO_BADGES);
 
-        const buffer = await drawCard('nitro-bg.png', data);
-        const file = new AttachmentBuilder(buffer, { name: 'nitro-card.png' });
+        if (!data) {
+            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة نيترو حالياً ❤️**` });
+        }
 
-        return message.reply({ content: `<@${message.author.id}>`, files: [file] });
+        return message.reply({
+            content: `<@${message.author.id}>\n` +
+                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
+                     `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
+                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\` (${data.currentMonths} / ${data.targetMonths} شهر)\n` +
+                     `⏱️ **الوقت المتبقي:** ${data.timeText}`
+        });
     }
 });
 
