@@ -16,30 +16,31 @@ const SPECIAL_USER_ID = "1554347941471453186";
 
 // شارات النيترو (بالشهور)
 const NITRO_BADGES = [
-    { months: 1, name: "Bronze (شهر واحد)" },
-    { months: 3, name: "Silver (3 أشهر)" },
-    { months: 6, name: "Gold (6 أشهر)" },
-    { months: 12, name: "Platinum (سنة واحدة)" },
-    { months: 24, name: "Diamond (سنتين)" },
-    { months: 36, name: "Emerald (3 سنوات)" },
-    { months: 60, name: "Ruby (5 سنوات)" },
-    { months: 72, name: "Opal (6+ سنوات)" }
+    { months: 1, name: "1M (شهر واحد)" },
+    { months: 3, name: "3M (3 أشهر)" },
+    { months: 6, name: "6M (6 أشهر)" },
+    { months: 12, name: "1Y (سنة واحدة)" },
+    { months: 24, name: "2Y (سنتين)" },
+    { months: 36, name: "3Y (3 سنوات)" },
+    { months: 60, name: "5Y (5 سنوات)" },
+    { months: 72, name: "6Y (6 سنوات)" }
 ];
 
 // شارات البوست (بالشهور)
 const BOOST_BADGES = [
-    { months: 1, name: "الشارة الأولى (شهر واحد)" },
-    { months: 2, name: "الشارة الثانية (شهرين)" },
-    { months: 3, name: "الشارة الثالثة (3 أشهر)" },
-    { months: 6, name: "الشارة الرابعة (6 أشهر)" },
-    { months: 9, name: "الشارة الخامسة (9 أشهر)" },
-    { months: 12, name: "الشارة السادسة (سنة واحدة)" },
-    { months: 15, name: "الشارة السابعة (15 شهر)" },
-    { months: 18, name: "الشارة الثامنة (18 شهر)" },
-    { months: 24, name: "الشارة التاسعة (سنتين)" }
+    { months: 1, name: "1M (شهر واحد)" },
+    { months: 2, name: "2M (شهرين)" },
+    { months: 3, name: "3M (3 أشهر)" },
+    { months: 6, name: "6M (6 أشهر)" },
+    { months: 9, name: "9M (9 أشهر)" },
+    { months: 12, name: "12M (سنة واحدة)" },
+    { months: 15, name: "15M (15 شهر)" },
+    { months: 18, name: "18M (18 شهر)" },
+    { months: 24, name: "24M (سنتين)" }
 ];
 
-function getAccurateBadgeData(startDate, badgeList) {
+// دالة حساب خوارزمية الشارات والوقت المتبقي
+function calculateSkyMilestone(startDate, badgeList, maxMonths) {
     const now = new Date();
 
     let years = now.getFullYear() - startDate.getFullYear();
@@ -69,6 +70,7 @@ function getAccurateBadgeData(startDate, badgeList) {
     }
 
     if (totalMonths >= badgeList[badgeList.length - 1].months) {
+        currentBadge = badgeList[badgeList.length - 1].name;
         nextBadge = "وصلت لأعلى شارة 🎉";
         targetMonths = badgeList[badgeList.length - 1].months;
     }
@@ -76,23 +78,15 @@ function getAccurateBadgeData(startDate, badgeList) {
     const targetDate = new Date(startDate.getTime());
     targetDate.setMonth(targetDate.getMonth() + targetMonths);
 
-    const prevDate = new Date(startDate.getTime());
-    prevDate.setMonth(prevDate.getMonth() + prevMonths);
-
-    let progress = 1;
-    if (targetDate > now && targetMonths > prevMonths) {
-        let totalTime = targetDate.getTime() - prevDate.getTime();
-        let passedTime = now.getTime() - prevDate.getTime();
-        progress = Math.min(1, Math.max(0, passedTime / totalTime));
-    }
+    let overallProgressPercent = Math.min(100, Math.floor((totalMonths / maxMonths) * 100));
 
     let diffMs = targetDate.getTime() - now.getTime();
     if (diffMs <= 0 || totalMonths >= badgeList[badgeList.length - 1].months) {
         return {
             currentBadge,
             nextBadge,
-            progressPercent: 100,
-            timeText: "وصلت إلى أعلى الشارات 🎉",
+            overallProgressPercent: 100,
+            timeText: "وصلت إلى الشارة النهائية 🎉",
             currentMonths: totalMonths,
             targetMonths
         };
@@ -114,16 +108,16 @@ function getAccurateBadgeData(startDate, badgeList) {
     let parts = [];
     if (remMonths > 0) parts.push(`${remMonths} شهر`);
     if (remWeeks > 0) parts.push(`${remWeeks} أسابيع`);
-    if (remDays > 0) parts.push(`${remDays} أيام`);
+    if (remDays > 0) parts.push(`${remDays} يوم`);
     if (remHours > 0) parts.push(`${remHours} ساعة`);
     if (remMinutes > 0) parts.push(`${remMinutes} دقيقة`);
 
-    let timeText = parts.length > 0 ? `بعد **${parts.join(' و ')}**` : "خلال لحظات ⚡";
+    let timeText = parts.length > 0 ? `سوف تصل الى الشاره التالية بعد **${parts.join(' و ')}**` : "سوف تصل الى الشارة التالية خلال لحظات ⚡";
 
     return {
         currentBadge,
         nextBadge,
-        progressPercent: Math.floor(progress * 100),
+        overallProgressPercent,
         timeText,
         currentMonths: totalMonths,
         targetMonths
@@ -140,10 +134,11 @@ client.on('messageCreate', async (message) => {
     const cmd = message.content.trim().toLowerCase();
     let isNitro = (cmd === 'n' || cmd === 'nitro' || cmd === '-n');
     let isBoost = (cmd === 'b' || cmd === 'boost' || cmd === '-b');
+    let isNitroTime = (cmd === 't' || cmd === '-t'); // الأمر الجديد t
 
-    if (!isNitro && !isBoost) return;
+    if (!isNitro && !isBoost && !isNitroTime) return;
 
-    // 👑 الرد الخاص بك عند كتابتك للأمر (VIP Special Message)
+    // 👑 رد المطور الخاص VIP
     if (message.author.id === SPECIAL_USER_ID) {
         return message.reply({
             content: `<@${message.author.id}>\n` +
@@ -162,25 +157,69 @@ client.on('messageCreate', async (message) => {
         }
     } catch (e) {}
 
-    // --- أمر البوست للأعضاء الآخرين ---
+    // --- أمر تتبع بداية ونهاية النيترو (t) ---
+    if (isNitroTime) {
+        const userFlags = user.flags ? user.flags.toArray() : [];
+        const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
+        const isCustomBanner = user.banner !== null;
+        const avatarDecoration = user.avatarDecoration;
+        const isBoosting = member && member.premiumSince !== null;
+
+        const hasNitroBadge = userFlags.some(flag => flag.includes('Premium') || flag.includes('Nitro')) || 
+                              isAnimatedAvatar || 
+                              isCustomBanner || 
+                              avatarDecoration || 
+                              isBoosting;
+
+        if (!hasNitroBadge) {
+            return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة نيترو حالياً ❤️**` });
+        }
+
+        // حساب تاريخ البدء وتاريخ التجديد/الانتهاء القادم (دورة شهرية افتراضية)
+        let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
+        
+        // حساب تاريخ التجديد القادم (نهاية الشهر الحالي للاشتراك)
+        let nextRenewalDate = new Date(startDate.getTime());
+        const now = new Date();
+        while (nextRenewalDate <= now) {
+            nextRenewalDate.setMonth(nextRenewalDate.getMonth() + 1);
+        }
+
+        let diffMs = nextRenewalDate.getTime() - now.getTime();
+        let totalMinutes = Math.floor(diffMs / (1000 * 60));
+        let remDays = Math.floor(totalMinutes / (24 * 60));
+        let remHours = Math.floor((totalMinutes % (24 * 60)) / 60);
+        let remMinutes = totalMinutes % 60;
+
+        return message.reply({
+            content: `<@${message.author.id}>\n` +
+                     `⏳ **تفاصيل موعد النيترو (بشكل دقيق):**\n` +
+                     `📅 **تاريخ البداية المسجل:** \`${startDate.toISOString().split('T')[0]}\`\n` +
+                     `🔄 **موعد التجديد / انتهاء الدورة الحالية:** \`${nextRenewalDate.toISOString().split('T')[0]}\`\n` +
+                     `⏱️ **الوقت المتبقي لتجديد الاشتراك:** \`${remDays} يوم و ${remHours} ساعة و ${remMinutes} دقيقة\` ⚡`
+        });
+    }
+
+    // --- أمر البوست ---
     if (isBoost) {
         if (!member || !member.premiumSince) {
             return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة بوست حالياً ❤️**` });
         }
 
         const startDate = new Date(member.premiumSince);
-        const data = getAccurateBadgeData(startDate, BOOST_BADGES);
+        const data = calculateSkyMilestone(startDate, BOOST_BADGES, 24);
 
         return message.reply({
             content: `<@${message.author.id}>\n` +
-                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
+                     `🔮 **اشارة البوست**\n` +
+                     `📍 **الشارة الحالية:** \`${data.currentBadge}\`\n` +
                      `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
-                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\` (${data.currentMonths} / ${data.targetMonths} شهر)\n` +
-                     `⏱️ **الوقت المتبقي:** ${data.timeText}`
+                     `📊 **نسبة الشارة الكلية:** \`${data.overallProgressPercent}%\`\n` +
+                     `⏳ ${data.timeText}`
         });
     }
 
-    // --- أمر النيترو للأعضاء الآخرين ---
+    // --- أمر النيترو ---
     if (isNitro) {
         const userFlags = user.flags ? user.flags.toArray() : [];
         const isAnimatedAvatar = user.avatar && user.avatar.startsWith('a_');
@@ -199,14 +238,15 @@ client.on('messageCreate', async (message) => {
         }
 
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
-        const data = getAccurateBadgeData(startDate, NITRO_BADGES);
+        const data = calculateSkyMilestone(startDate, NITRO_BADGES, 72);
 
         return message.reply({
             content: `<@${message.author.id}>\n` +
-                     `📍 **الشارة الحالية:** \`${data.currentBadge}\` (${data.currentMonths} شهر)\n` +
+                     `🔮 **اشارة النيترو**\n` +
+                     `📍 **الشارة الحالية:** \`${data.currentBadge}\`\n` +
                      `🎯 **الشارة التالية:** \`${data.nextBadge}\`\n` +
-                     `📊 **نسبة التقدم:** \`${data.progressPercent}%\` (${data.currentMonths} / ${data.targetMonths} شهر)\n` +
-                     `⏱️ **الوقت المتبقي:** ${data.timeText}`
+                     `📊 **نسبة الشارة الكلية:** \`${data.overallProgressPercent}%\`\n` +
+                     `⏳ ${data.timeText}`
         });
     }
 });
