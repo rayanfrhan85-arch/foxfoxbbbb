@@ -1,19 +1,5 @@
 require('dotenv').config();
-const { 
-    Client, 
-    GatewayIntentBits, 
-    EmbedBuilder, 
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
-    ModalBuilder, 
-    TextInputBuilder, 
-    TextInputStyle 
-} = require('discord.js');
-
-// 🎵 استدعاء مكتبة الموسيقى للجودة العالية
-const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { Client, GatewayIntentBits } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -21,16 +7,8 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildVoiceStates // 🔊 صلاحيات الروم الصوتي
+        GatewayIntentBits.GuildPresences
     ]
-});
-
-// 🎶 إعداد مشغل الموسيقى بأعلى جودة (تم إصلاح الخيار المسبب للخطأ)
-const distube = new DisTube(client, {
-    emitNewSongOnly: true,
-    savePreviousSongs: true,
-    plugins: [new YtDlpPlugin()]
 });
 
 // 👑 آيدي المطور (FOX VIP)
@@ -74,7 +52,7 @@ function calculateSkyMilestone(startDate, badgeList, maxMonths) {
     }
     totalMonths = Math.max(0, totalMonths);
 
-    let currentBadge = "بداية الطريق بعدك كتكوت (أقل من شهر)";
+    let currentBadge = "بداية الطريق (أقل من شهر)";
     let nextBadge = badgeList[0].name;
     let targetMonths = badgeList[0].months;
     let prevMonths = 0;
@@ -154,40 +132,18 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     const cmd = message.content.trim().toLowerCase();
-    
-    // 🎵 الأوامر الجديدة reba و fox
-    let isMusicCmd = (cmd === 'reba' || cmd === 'fox');
     let isNitro = (cmd === 'n' || cmd === 'nitro' || cmd === '-n');
     let isBoost = (cmd === 'b' || cmd === 'boost' || cmd === '-b');
-    let isNitroTime = (cmd === 't' || cmd === '-t');
+    let isNitroTime = (cmd === 't' || cmd === '-t'); // الأمر الجديد t
 
-    if (!isNitro && !isBoost && !isNitroTime && !isMusicCmd) return;
-
-    // 🎵 1️⃣ أمر الموسيقى (reba أو fox)
-    if (isMusicCmd) {
-        const embed = new EmbedBuilder()
-            .setTitle('🎵 نظام تشغيل الموسيقى المتطور')
-            .setDescription('✨ **أهلاً بك!** اضغط على الزر بالأسفل لكتابة اسم الأغنية أو الرابط لتشغيلها بأعلى جودة 🎧.')
-            .setColor('#2b2d31')
-            .setFooter({ text: 'FOX Music System 🚀', iconURL: client.user.displayAvatarURL() });
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('fox_open_music_modal')
-                .setLabel('ابحث أو شغّل أغنية 🎶')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🔍')
-        );
-
-        return message.reply({ embeds: [embed], components: [row] });
-    }
+    if (!isNitro && !isBoost && !isNitroTime) return;
 
     // 👑 رد المطور الخاص VIP
     if (message.author.id === SPECIAL_USER_ID) {
         return message.reply({
             content: `<@${message.author.id}>\n` +
                      `✨ **أهلاً بك سيدي (VIP)** 👑\n` +
-                     ` **السكربت خاص ب: FOX** `
+                     `🔥 **السكربت تم تطويره وبرمجته بالكامل بواسطة المطور: FOX** 🦊`
         });
     }
 
@@ -219,8 +175,10 @@ client.on('messageCreate', async (message) => {
             return message.reply({ content: `<@${message.author.id}> ❌ **ليس لديك شارة نيترو حالياً ❤️**` });
         }
 
+        // حساب تاريخ البدء وتاريخ التجديد/الانتهاء القادم (دورة شهرية افتراضية)
         let startDate = member && member.premiumSince ? new Date(member.premiumSince) : new Date(user.createdTimestamp);
         
+        // حساب تاريخ التجديد القادم (نهاية الشهر الحالي للاشتراك)
         let nextRenewalDate = new Date(startDate.getTime());
         const now = new Date();
         while (nextRenewalDate <= now) {
@@ -290,120 +248,6 @@ client.on('messageCreate', async (message) => {
                      `📊 **نسبة الشارة الكلية:** \`${data.overallProgressPercent}%\`\n` +
                      `⏳ ${data.timeText}`
         });
-    }
-});
-
-// 🎵 2️⃣ معالجة النافذة المنبثقة (Modal) والبحث
-client.on('interactionCreate', async interaction => {
-    if (interaction.isButton() && interaction.customId === 'fox_open_music_modal') {
-        const modal = new ModalBuilder()
-            .setCustomId('fox_music_modal')
-            .setTitle('تشغيل الأغاني - FOX Music');
-
-        const songInput = new TextInputBuilder()
-            .setCustomId('song_input')
-            .setLabel('اكتب اسم الأغنية أو رابط يوتيوب/سوتفاي:')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('مثال: اسم الأغنية أو الرابط...')
-            .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(songInput));
-        await interaction.showModal(modal);
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId === 'fox_music_modal') {
-        if (!interaction.member.voice.channel) {
-            return interaction.reply({ content: '❌ **يجب أن تكون متواجداً داخل روم صوتي أولاً!**', ephemeral: true });
-        }
-
-        const query = interaction.fields.getTextInputValue('song_input');
-        await interaction.reply({ content: `🔍 **جاري التحميل والتأكد من الجودة العالية:** \`${query}\`...`, ephemeral: true });
-
-        try {
-            await distube.play(interaction.member.voice.channel, query, {
-                textChannel: interaction.channel,
-                member: interaction.member,
-            });
-        } catch (e) {
-            console.error(e);
-            await interaction.editReply({ content: `❌ **حدث خطأ أثناء التشغيل:** \`${e.message}\`` });
-        }
-    }
-});
-
-// 🎵 3️⃣ إرسال لوحة التحكم التفاعلية مع بدء التشغيل
-distube.on('playSong', (queue, song) => {
-    const embed = new EmbedBuilder()
-        .setTitle('🎶 جاري تشغيل الأغنية الآن')
-        .setDescription(`**[${song.name}](${song.url})**`)
-        .addFields(
-            { name: '⏱️ المدة', value: `\`${song.formattedDuration}\``, inline: true },
-            { name: '👤 طلب بواسطة', value: `${song.user}`, inline: true },
-            { name: '🔊 مستوى الصوت', value: `\`${queue.volume}%\``, inline: true }
-        )
-        .setThumbnail(song.thumbnail)
-        .setColor('#00ffcc')
-        .setTimestamp();
-
-    const controlsRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('music_pause').setLabel('إيقاف مؤقت').setStyle(ButtonStyle.Secondary).setEmoji('⏸️'),
-        new ButtonBuilder().setCustomId('music_vol_down').setLabel('خفض الصوت').setStyle(ButtonStyle.Primary).setEmoji('🔉'),
-        new ButtonBuilder().setCustomId('music_vol_up').setLabel('رفع الصوت').setStyle(ButtonStyle.Primary).setEmoji('🔊'),
-        new ButtonBuilder().setCustomId('music_skip').setLabel('تخطي').setStyle(ButtonStyle.Success).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('music_stop').setLabel('إيقاف ومغادرة').setStyle(ButtonStyle.Danger).setEmoji('⏹️')
-    );
-
-    queue.textChannel.send({ embeds: [embed], components: [controlsRow] });
-});
-
-// 🎵 4️⃣ أزرار التحكم (رفع/خفض الصوت، تخطي، إلخ)
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isButton()) return;
-    if (!interaction.customId.startsWith('music_')) return;
-
-    const queue = distube.getQueue(interaction.guildId);
-    if (!queue) return interaction.reply({ content: '❌ **لا توجد أي أغنية تعمل حالياً!**', ephemeral: true });
-
-    if (!interaction.member.voice.channel) {
-        return interaction.reply({ content: '❌ **يجب أن تكون معي في نفس الروم الصوتي!**', ephemeral: true });
-    }
-
-    try {
-        switch (interaction.customId) {
-            case 'music_pause':
-                if (queue.paused) {
-                    queue.resume();
-                    await interaction.reply({ content: '▶️ **تم استئناف تشغيل الأغنية.**', ephemeral: true });
-                } else {
-                    queue.pause();
-                    await interaction.reply({ content: '⏸️ **تم إيقاف الأغنية مؤقتاً.**', ephemeral: true });
-                }
-                break;
-
-            case 'music_vol_down':
-                const newVolDown = Math.max(queue.volume - 10, 0);
-                queue.setVolume(newVolDown);
-                await interaction.reply({ content: `🔉 **تم خفض الصوت إلى:** \`${newVolDown}%\``, ephemeral: true });
-                break;
-
-            case 'music_vol_up':
-                const newVolUp = Math.min(queue.volume + 10, 100);
-                queue.setVolume(newVolUp);
-                await interaction.reply({ content: `🔊 **تم رفع الصوت إلى:** \`${newVolUp}%\``, ephemeral: true });
-                break;
-
-            case 'music_skip':
-                await distube.skip(interaction.guildId);
-                await interaction.reply({ content: '⏭️ **تم تخطي الأغنية.**', ephemeral: true });
-                break;
-
-            case 'music_stop':
-                distube.stop(interaction.guildId);
-                await interaction.reply({ content: '⏹️ **تم إيقاف المشغل ومغادرة الروم الصوتي.**', ephemeral: true });
-                break;
-        }
-    } catch (e) {
-        await interaction.reply({ content: `❌ **حدث خطأ:** ${e.message}`, ephemeral: true });
     }
 });
 
